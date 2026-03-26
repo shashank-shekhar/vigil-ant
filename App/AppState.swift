@@ -93,6 +93,12 @@ final class AppState {
         didSet { saveRepositories() }
     }
 
+    enum SettingsTab: Hashable {
+        case accounts, repositories, general, about
+    }
+
+    var selectedSettingsTab: SettingsTab = .accounts
+
     private var previousStatuses: [Int: BuildStatus.Status] = [:]
 
     var hasCompletedOnboarding: Bool = false {

@@ -10,6 +10,7 @@ enum RepoSortOrder: String, CaseIterable {
 struct RepositoriesTab: View {
     @Bindable var appState: AppState
     @State private var searchText = ""
+    @State private var collapsedAccounts: Set<UUID> = []
     @AppStorage("repoSortOrder") private var sortOrder: String = RepoSortOrder.name.rawValue
     @AppStorage("repoEnabledFirst") private var enabledFirst = false
 
@@ -19,32 +20,78 @@ struct RepositoriesTab: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
-                TextField("Filter repositories...", text: $searchText)
-                    .textFieldStyle(.roundedBorder)
+            VStack(spacing: 8) {
+                HStack(spacing: 10) {
+                    TextField("Filter repositories...", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
 
-                Picker("Sort:", selection: $sortOrder) {
-                    ForEach(RepoSortOrder.allCases, id: \.rawValue) { order in
-                        Text(order.rawValue).tag(order.rawValue)
+                    Picker("Sort:", selection: $sortOrder) {
+                        ForEach(RepoSortOrder.allCases, id: \.rawValue) { order in
+                            Text(order.rawValue).tag(order.rawValue)
+                        }
                     }
-                }
-                .fixedSize()
-
-                Toggle("Enabled first", isOn: $enabledFirst)
                     .fixedSize()
+
+                    Toggle("Enabled first", isOn: $enabledFirst)
+                        .fixedSize()
+                }
+
+                HStack(spacing: 0) {
+                    let allSelected = !appState.repositories.isEmpty && appState.repositories.allSatisfy(\.isMonitored)
+                    Button(allSelected ? "Deselect All" : "Select All") {
+                        let newValue = !allSelected
+                        for idx in appState.repositories.indices {
+                            appState.repositories[idx].isMonitored = newValue
+                        }
+                    }
+                    .font(.system(size: 11))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+
+                    Text(" | ")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.quaternary)
+
+                    Button("Select All with CI") {
+                        for idx in appState.repositories.indices where appState.repositories[idx].hasWorkflows {
+                            appState.repositories[idx].isMonitored = true
+                        }
+                    }
+                    .font(.system(size: 11))
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+
+                    Spacer()
+
+                    Text("\(appState.repositories.filter(\.isMonitored).count)/\(appState.repositories.count) selected")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.vertical, 12)
 
             List {
                 ForEach(appState.accounts) { account in
                     let repos = filteredRepos(for: account.id)
                     Section {
-                        ForEach(repos.indices, id: \.self) { index in
-                            repoRow(repos[index])
+                        if !collapsedAccounts.contains(account.id) {
+                            ForEach(repos.indices, id: \.self) { index in
+                                repoRow(repos[index])
+                            }
                         }
                     } header: {
                         sectionHeader(account: account, repos: repos)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation {
+                                    if collapsedAccounts.contains(account.id) {
+                                        collapsedAccounts.remove(account.id)
+                                    } else {
+                                        collapsedAccounts.insert(account.id)
+                                    }
+                                }
+                            }
                     }
                 }
             }
@@ -52,23 +99,19 @@ struct RepositoriesTab: View {
     }
 
     private func sectionHeader(account: Account, repos: [Repository]) -> some View {
-        HStack(spacing: 6) {
+        let isCollapsed = collapsedAccounts.contains(account.id)
+        return HStack(spacing: 6) {
+            Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(.secondary)
+                .frame(width: 12)
             IconImage(name: account.iconSymbol)
             Text(account.name)
             Spacer()
-            let workflowRepos = repos.filter(\.hasWorkflows)
-            let allSelected = !workflowRepos.isEmpty && workflowRepos.allSatisfy(\.isMonitored)
-            Button(allSelected ? "Deselect All" : "Select All") {
-                let newValue = !allSelected
-                for repo in workflowRepos {
-                    if let idx = appState.repositories.firstIndex(where: { $0.id == repo.id }) {
-                        appState.repositories[idx].isMonitored = newValue
-                    }
-                }
-            }
-            .font(.system(size: 11))
-            .buttonStyle(.plain)
-            .foregroundStyle(.blue)
+            let monitored = repos.filter(\.isMonitored).count
+            Text("\(monitored)/\(repos.count)")
+                .font(.system(size: 11))
+                .foregroundStyle(.secondary)
         }
     }
 

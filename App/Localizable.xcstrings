@@ -4,6 +4,9 @@
     "" : {
 
     },
+    " | " : {
+
+    },
     "· %@" : {
 
     },
@@ -31,6 +34,26 @@
     },
     "%lld failing %@" : {
       "comment" : "Accessibility label for menu bar icon showing failure count"
+    },
+    "%lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "%lld/%lld selected" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld selected"
+          }
+        }
+      }
     },
     "© 2026 Shashank Shekhar" : {
 
@@ -278,6 +301,9 @@
     },
     "Select All" : {
       "comment" : "Select all repos button in section header"
+    },
+    "Select All with CI" : {
+
     },
     "Settings" : {
       "comment" : "Settings button in auth error banner"

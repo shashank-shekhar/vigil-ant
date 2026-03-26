@@ -66,7 +66,7 @@ struct AccountsTab: View {
             Spacer()
         }
         .padding(16)
-        .sheet(isPresented: Binding(
+        .popover(isPresented: Binding(
             get: { editingAccountIndex != nil },
             set: { if !$0 { editingAccountIndex = nil } }
         )) {
@@ -344,6 +344,7 @@ struct AccountsTab: View {
                 }
 
                 let account = Account(name: user.name ?? user.login, username: user.login)
+                addAccountState = .idle
                 try appState.addAccount(account, token: tokenResponse.accessToken)
 
                 // Save refresh token if the GitHub App uses expiring tokens

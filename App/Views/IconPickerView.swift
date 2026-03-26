@@ -9,7 +9,7 @@ struct IconPickerView: View {
         "icon-cat", "icon-bird", "icon-rabbit", "icon-squirrel",
         "icon-ghost", "icon-skull", "icon-rocket", "icon-flame",
         "icon-star", "icon-heart", "icon-shield", "icon-crown",
-        "icon-diamond", "icon-zap", "icon-leaf", "icon-moon",
+        "icon-diamond", "icon-zap", "icon-leaf", "icon-moon", "icon-sun",
     ]
 
     var body: some View {

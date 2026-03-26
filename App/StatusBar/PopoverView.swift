@@ -97,7 +97,7 @@ struct PopoverView: View {
                     HStack {
                         footerStatus
                         Spacer()
-                        if appState.accounts.isEmpty || !aggregator.authFailedAccountIDs.isEmpty {
+                        if let settingsTab = footerSettingsTab {
                             SettingsLink {
                                 Text("Settings")
                                     .font(.system(size: 12))
@@ -105,6 +105,7 @@ struct PopoverView: View {
                             }
                             .buttonStyle(.plain)
                             .simultaneousGesture(TapGesture().onEnded {
+                                appState.selectedSettingsTab = settingsTab
                                 activateSettingsWindow()
                             })
                         } else {
@@ -143,6 +144,20 @@ struct PopoverView: View {
         } message: {
             Text("You will stop receiving CI status updates.")
         }
+    }
+
+    /// Returns which settings tab the footer should link to, or nil if Refresh should be shown.
+    private var footerSettingsTab: AppState.SettingsTab? {
+        if appState.accounts.isEmpty {
+            return .accounts
+        } else if !aggregator.authFailedAccountIDs.isEmpty {
+            return .accounts
+        } else if appState.repositories.filter({ $0.isMonitored }).isEmpty {
+            return .repositories
+        } else if appState.repositories.filter({ $0.isMonitored && $0.hasWorkflows }).isEmpty {
+            return .repositories
+        }
+        return nil
     }
 
     @ViewBuilder

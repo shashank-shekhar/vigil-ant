@@ -5,18 +5,22 @@ struct SettingsView: View {
     var sparkleUpdater: SparkleUpdater
 
     var body: some View {
-        TabView {
+        TabView(selection: $appState.selectedSettingsTab) {
             AccountsTab(appState: appState)
                 .tabItem { Label("Accounts", systemImage: "person.2") }
+                .tag(AppState.SettingsTab.accounts)
 
             RepositoriesTab(appState: appState)
                 .tabItem { Label("Repositories", systemImage: "folder") }
+                .tag(AppState.SettingsTab.repositories)
 
             GeneralTab(appState: appState, sparkleUpdater: sparkleUpdater)
                 .tabItem { Label("General", systemImage: "gearshape") }
+                .tag(AppState.SettingsTab.general)
 
             AboutTab()
                 .tabItem { Label("About", systemImage: "info.circle") }
+                .tag(AppState.SettingsTab.about)
         }
         .frame(width: 520, height: 420)
         .onAppear {
