@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-packages:
+    name: Test Swift Packages
+    runs-on: macos-15
+    strategy:
+      matrix:
+        package: [GitHubKit, CIStatusKit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Test ${{ matrix.package }}
+        run: |
+          cd Packages/${{ matrix.package }}
+          swift test
+
+  build-app:
+    name: Build App
+    runs-on: macos-15
+    needs: test-packages
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Secrets.xcconfig
+        env:
+          GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
+        run: echo "GH_CLIENT_ID = ${GH_CLIENT_ID:-placeholder}" > Secrets.xcconfig
+
+      - name: Build
+        run: |
+          xcodebuild build \
+            -project Vigilant/Vigilant.xcodeproj \
+            -scheme Vigilant \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO

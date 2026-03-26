@@ -1,0 +1,19 @@
+# macOS
+.DS_Store
+
+# Xcode
+**/xcuserdata/
+*.xcscmblueprint
+DerivedData/
+build/
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Secrets (real values — template is committed)
+Secrets.xcconfig
+
+# Plugins
+.superpowers/

@@ -1,0 +1,333 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "" : {
+
+    },
+    "· %@" : {
+
+    },
+    "· No CI" : {
+      "comment" : "Repository label when no CI workflows exist"
+    },
+    "@%@ · %lld repos monitored" : {
+      "comment" : "Account card subtitle showing username and monitored repo count"
+    },
+    "%@ — re-sign in from Settings." : {
+      "comment" : "Auth error banner message with account names"
+    },
+    "%@ account, %lld %@" : {
+      "comment" : "Accessibility label for account section header showing name and repo count"
+    },
+    "%@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%lld failing %@" : {
+      "comment" : "Accessibility label for menu bar icon showing failure count"
+    },
+    "© 2026 Shashank Shekhar" : {
+
+    },
+    "+ Add GitHub Account" : {
+      "comment" : "Add account button title"
+    },
+    "1 min" : {
+      "comment" : "Polling interval option"
+    },
+    "2 min" : {
+      "comment" : "Polling interval option"
+    },
+    "5 min" : {
+      "comment" : "Polling interval option"
+    },
+    "10 min" : {
+      "comment" : "Polling interval option"
+    },
+    "About" : {
+
+    },
+    "About Vigil-ant" : {
+
+    },
+    "Accounts" : {
+      "comment" : "Settings tab label"
+    },
+    "Add a GitHub account in Settings" : {
+
+    },
+    "All builds passing" : {
+      "comment" : "Accessibility label for menu bar icon when no failures"
+    },
+    "Authentication failed" : {
+      "comment" : "Auth error banner title"
+    },
+    "Authentication failed for %@. Re-sign in from Settings." : {
+      "comment" : "Accessibility label for auth error banner"
+    },
+    "Automatically check for updates" : {
+      "comment" : "Toggle for automatic update checking"
+    },
+    "building" : {
+
+    },
+    "Building" : {
+
+    },
+    "Cancel" : {
+      "comment" : "Cancel device flow button"
+    },
+    "Change Icon" : {
+      "comment" : "Change account icon button"
+    },
+    "Check for Updates…" : {
+      "comment" : "Button to manually check for updates"
+    },
+    "Choose an Icon" : {
+
+    },
+    "CI Status" : {
+      "comment" : "Popover header title"
+    },
+    "Copied!" : {
+      "comment" : "Copy device code button after copying"
+    },
+    "Copy" : {
+      "comment" : "Copy device code button"
+    },
+    "Copy Code" : {
+
+    },
+    "Deselect All" : {
+      "comment" : "Deselect all repos button in section header"
+    },
+    "Discard Repositories" : {
+      "comment" : "Confirmation dialog option to delete repos when removing account"
+    },
+    "Dismiss" : {
+
+    },
+    "Enable notifications" : {
+
+    },
+    "Enabled first" : {
+      "comment" : "Repository sort toggle"
+    },
+    "Enter this code on GitHub:" : {
+      "comment" : "Device code card instruction"
+    },
+    "Failed" : {
+      "comment" : "Build status subtitle"
+    },
+    "Failed to add account: %@" : {
+      "comment" : "Generic error message when adding account fails"
+    },
+    "failing" : {
+      "comment" : "Accessibility label for failed build status"
+    },
+    "Fetching repositories... (%lld/%lld)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Fetching repositories... (%1$lld/%2$lld)"
+          }
+        }
+      }
+    },
+    "Filter repositories..." : {
+      "comment" : "Repository search field placeholder"
+    },
+    "General" : {
+      "comment" : "Settings tab label"
+    },
+    "Get Started" : {
+
+    },
+    "GitHub API rate limit reached — polling paused temporarily." : {
+      "comment" : "Rate limit banner message"
+    },
+    "GitHub API rate limit reached. Polling paused temporarily." : {
+      "comment" : "Accessibility label for rate limit banner"
+    },
+    "Group notifications" : {
+
+    },
+    "Keep Repositories" : {
+      "comment" : "Confirmation dialog option to keep repos when removing account"
+    },
+    "Keeping repositories preserves your monitoring preferences when you re-add this account." : {
+      "comment" : "Confirmation dialog explanation message"
+    },
+    "Keyboard Shortcut" : {
+      "comment" : "General settings section header"
+    },
+    "Last checked: %@" : {
+      "comment" : "Footer timestamp showing when CI status was last refreshed"
+    },
+    "Last checked: %@ (stale)" : {
+
+    },
+    "Launch at Login" : {
+      "comment" : "Launch at login toggle"
+    },
+    "Monitor GitHub CI/CD build status from your menu bar" : {
+
+    },
+    "Monitor your GitHub CI/CD builds from the menu bar" : {
+
+    },
+    "No CI workflows detected" : {
+
+    },
+    "No repositories selected" : {
+
+    },
+    "no status" : {
+      "comment" : "Accessibility label for unknown build status"
+    },
+    "No status" : {
+      "comment" : "Build status subtitle"
+    },
+    "Notifications" : {
+      "comment" : "General settings section header"
+    },
+    "Notify on build failure" : {
+
+    },
+    "Notify when build is fixed" : {
+
+    },
+    "Offline" : {
+
+    },
+    "Open GitHub" : {
+      "comment" : "Open GitHub verification URL button"
+    },
+    "Opens build in browser" : {
+      "comment" : "Accessibility hint for repo row tap action"
+    },
+    "Passed" : {
+      "comment" : "Build status subtitle"
+    },
+    "passing" : {
+      "comment" : "Accessibility label for successful build status"
+    },
+    "pending" : {
+
+    },
+    "Pending" : {
+
+    },
+    "Poll Interval" : {
+      "comment" : "Polling interval picker label"
+    },
+    "Polling" : {
+      "comment" : "General settings section header"
+    },
+    "Private" : {
+      "comment" : "Repository visibility label"
+    },
+    "Public" : {
+      "comment" : "Repository visibility label"
+    },
+    "Quit" : {
+
+    },
+    "Quit Vigil-ant?" : {
+
+    },
+    "Rate limit reached — resets %@." : {
+
+    },
+    "Rate limit resets %@" : {
+
+    },
+    "Re-authenticate" : {
+
+    },
+    "Re-authenticating @%@" : {
+
+    },
+    "Re-authentication failed: %@" : {
+
+    },
+    "Re-sign in from Settings." : {
+      "comment" : "Auth error banner message when no specific account names"
+    },
+    "Refresh" : {
+      "comment" : "Refresh button in popover footer"
+    },
+    "Refreshes CI status for all repositories" : {
+      "comment" : "Accessibility hint for refresh button"
+    },
+    "Remove" : {
+      "comment" : "Remove account button"
+    },
+    "Remove @%@?" : {
+
+    },
+    "Repositories" : {
+      "comment" : "Settings tab label"
+    },
+    "Repository not found — may have been deleted or transferred" : {
+
+    },
+    "Select All" : {
+      "comment" : "Select all repos button in section header"
+    },
+    "Settings" : {
+      "comment" : "Settings button in auth error banner"
+    },
+    "Sign in via GitHub Device Flow" : {
+      "comment" : "Add account button subtitle"
+    },
+    "Sort:" : {
+      "comment" : "Repository sort picker label"
+    },
+    "Startup" : {
+      "comment" : "General settings section header"
+    },
+    "Tip: Open settings anytime with the gear icon above" : {
+
+    },
+    "Toggle Popover:" : {
+
+    },
+    "Try Again" : {
+      "comment" : "Retry button after error"
+    },
+    "Updates" : {
+      "comment" : "General settings section header for auto-updates"
+    },
+    "Version %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "View on GitHub" : {
+
+    },
+    "Vigil-ant" : {
+
+    },
+    "Waiting for authorization..." : {
+      "comment" : "Device flow polling status message"
+    },
+    "You will stop receiving CI status updates." : {
+
+    }
+  },
+  "version" : "1.0"
+}

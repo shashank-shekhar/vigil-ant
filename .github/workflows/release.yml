@@ -1,0 +1,140 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create Secrets.xcconfig
+        env:
+          GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
+          SPARKLE_PUBLIC_KEY: ${{ secrets.SPARKLE_PUBLIC_KEY }}
+        run: |
+          cat > Secrets.xcconfig << XCCONFIG
+          GH_CLIENT_ID = ${GH_CLIENT_ID:-placeholder}
+          SPARKLE_PUBLIC_KEY = ${SPARKLE_PUBLIC_KEY:-placeholder}
+          XCCONFIG
+
+      - name: Extract version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build release archive
+        run: |
+          xcodebuild archive \
+            -project Vigilant/Vigilant.xcodeproj \
+            -scheme Vigilant \
+            -destination 'platform=macOS' \
+            -archivePath build/Vigil-ant.xcarchive \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES
+
+      - name: Export app from archive
+        run: |
+          cat > build/ExportOptions.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>mac-application</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath build/Vigil-ant.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist build/ExportOptions.plist \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES
+
+      - name: Package app as zip
+        run: |
+          cd build/export
+          APP_NAME=$(ls -d *.app | head -1)
+          ditto -c -k --keepParent "$APP_NAME" "../Vigil-ant-${{ steps.version.outputs.version }}.zip"
+
+      - name: Sign update for Sparkle
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Find Sparkle's sign_update tool from the resolved SPM package
+          SIGN_UPDATE=$(find ~/Library/Developer/Xcode/DerivedData \
+            -path "*/Sparkle/bin/sign_update" -type f 2>/dev/null | head -1)
+
+          if [ -z "$SIGN_UPDATE" ]; then
+            echo "Warning: sign_update not found — skipping Sparkle signature"
+            echo "signature=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          ZIP_FILE="build/Vigil-ant-${VERSION}.zip"
+          SIGNATURE=$(echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" "$ZIP_FILE" --ed-key-file -)
+          echo "signature=${SIGNATURE}" >> "$GITHUB_OUTPUT"
+        id: sparkle
+
+      - name: Update appcast.xml
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          SIGNATURE: ${{ steps.sparkle.outputs.signature }}
+        run: |
+          ZIP_FILE="build/Vigil-ant-${VERSION}.zip"
+          FILE_SIZE=$(stat -f%z "$ZIP_FILE")
+          PUB_DATE=$(date -R)
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Vigil-ant-${VERSION}.zip"
+
+          # Build the new item XML
+          ITEM=$(cat << ITEM_EOF
+            <item>
+                <title>Version ${VERSION}</title>
+                <pubDate>${PUB_DATE}</pubDate>
+                <sparkle:version>${VERSION}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+                <enclosure
+                    url="${DOWNLOAD_URL}"
+                    length="${FILE_SIZE}"
+                    type="application/octet-stream"
+                    sparkle:edSignature="${SIGNATURE}" />
+            </item>
+          ITEM_EOF
+          )
+
+          # Insert item before </channel>
+          sed -i '' "s|</channel>|${ITEM}\n    </channel>|" appcast.xml
+
+      - name: Commit appcast.xml
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout main
+          git add appcast.xml
+          git commit -m "release: update appcast for v${{ steps.version.outputs.version }}" || true
+          git push origin main
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$TAG_NAME" \
+            "build/Vigil-ant-${VERSION}.zip" \
+            --title "Vigil-ant ${VERSION}" \
+            --generate-notes
