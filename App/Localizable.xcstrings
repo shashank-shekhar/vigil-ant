@@ -83,9 +83,6 @@
     "Cancel" : {
       "comment" : "Cancel device flow button"
     },
-    "Change Icon" : {
-      "comment" : "Change account icon button"
-    },
     "Check for Updates…" : {
       "comment" : "Button to manually check for updates"
     },
@@ -102,6 +99,9 @@
       "comment" : "Copy device code button"
     },
     "Copy Code" : {
+
+    },
+    "Customize" : {
 
     },
     "Deselect All" : {
@@ -266,9 +266,6 @@
     },
     "Refreshes CI status for all repositories" : {
       "comment" : "Accessibility hint for refresh button"
-    },
-    "Remove" : {
-      "comment" : "Remove account button"
     },
     "Remove @%@?" : {
 

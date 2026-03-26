@@ -74,24 +74,21 @@ struct AccountsTab: View {
                 IconPickerView(selectedSymbol: $appState.accounts[idx].iconSymbol)
             }
         }
-        .confirmationDialog(
+        .alert(
             "Remove @\(accountToRemove?.username ?? "account")?",
             isPresented: Binding(
                 get: { accountToRemove != nil },
                 set: { if !$0 { accountToRemove = nil } }
-            ),
-            titleVisibility: .visible
+            )
         ) {
             if let account = accountToRemove {
                 Button("Keep Repositories") {
                     appState.removeAccount(account, keepRepos: true)
                     accountToRemove = nil
                 }
-                Button(role: .destructive) {
+                Button("Discard Repositories", role: .destructive) {
                     appState.removeAccount(account, keepRepos: false)
                     accountToRemove = nil
-                } label: {
-                    Text("Discard Repositories")
                 }
                 Button("Cancel", role: .cancel) {
                     accountToRemove = nil
@@ -456,12 +453,17 @@ struct AccountCard: View {
             Spacer()
 
             if !isAuthFailed {
-                Button("Change Icon", action: onChangeIcon)
+                Button("Customize", action: onChangeIcon)
                     .font(.system(size: 12))
             }
 
-            Button("Remove", role: .destructive, action: onRemove)
-                .font(.system(size: 12))
+            Button(action: onRemove) {
+                Image("icon-trash")
+                    .resizable()
+                    .frame(width: 14, height: 14)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
         }
         .padding(14)
         .background {

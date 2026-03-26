@@ -2,6 +2,12 @@ import SwiftUI
 import CIStatusKit
 import GitHubKit
 
+@MainActor
+private func activateSettingsWindow() {
+    NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+    NSApp.activate(ignoringOtherApps: true)
+}
+
 struct PopoverView: View {
     let appState: AppState
     var onRefresh: () -> Void = {}
@@ -34,7 +40,7 @@ struct PopoverView: View {
                 }
                 .buttonStyle(.plain)
                 .simultaneousGesture(TapGesture().onEnded {
-                    NSApp.activate(ignoringOtherApps: true)
+                    activateSettingsWindow()
                 })
 
                 Button {
@@ -91,11 +97,23 @@ struct PopoverView: View {
                     HStack {
                         footerStatus
                         Spacer()
-                        Button("Refresh") { onRefresh() }
-                            .font(.system(size: 12))
+                        if appState.accounts.isEmpty || !aggregator.authFailedAccountIDs.isEmpty {
+                            SettingsLink {
+                                Text("Settings")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.blue)
+                            }
                             .buttonStyle(.plain)
-                            .foregroundStyle(.blue)
-                            .accessibilityHint(String(localized: "Refreshes CI status for all repositories"))
+                            .simultaneousGesture(TapGesture().onEnded {
+                                activateSettingsWindow()
+                            })
+                        } else {
+                            Button("Refresh") { onRefresh() }
+                                .font(.system(size: 12))
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.blue)
+                                .accessibilityHint(String(localized: "Refreshes CI status for all repositories"))
+                        }
                     }
                     if !aggregator.rateLimitedAccountIDs.isEmpty,
                        let resetDate = aggregator.rateLimitResetDate,
@@ -201,7 +219,7 @@ struct PopoverView: View {
             .buttonStyle(.bordered)
             .controlSize(.small)
             .simultaneousGesture(TapGesture().onEnded {
-                NSApp.activate(ignoringOtherApps: true)
+                activateSettingsWindow()
             })
         }
         .padding(.horizontal, 16)
