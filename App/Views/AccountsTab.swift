@@ -22,18 +22,24 @@ struct AccountsTab: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            ForEach(appState.accounts) { account in
+            ForEach(Array(appState.accounts.enumerated()), id: \.element.id) { index, account in
                 VStack(spacing: 0) {
                     AccountCard(
                         account: account,
                         repoCount: appState.repositories.filter { $0.accountID == account.id && $0.isMonitored }.count,
                         isAuthFailed: appState.aggregator.authFailedAccountIDs.contains(account.id),
                         onChangeIcon: {
-                            editingAccountIndex = appState.accounts.firstIndex(where: { $0.id == account.id })
+                            editingAccountIndex = index
                         },
                         onRemove: { accountToRemove = account },
                         onReAuthenticate: { startReAuthFlow(for: account) }
                     )
+                    .popover(isPresented: Binding(
+                        get: { editingAccountIndex == index },
+                        set: { if !$0 { editingAccountIndex = nil } }
+                    )) {
+                        IconPickerView(selectedSymbol: $appState.accounts[index].iconSymbol)
+                    }
 
                     if reAuthAccount?.id == account.id {
                         switch reAuthState {
@@ -66,14 +72,6 @@ struct AccountsTab: View {
             Spacer()
         }
         .padding(16)
-        .popover(isPresented: Binding(
-            get: { editingAccountIndex != nil },
-            set: { if !$0 { editingAccountIndex = nil } }
-        )) {
-            if let idx = editingAccountIndex {
-                IconPickerView(selectedSymbol: $appState.accounts[idx].iconSymbol)
-            }
-        }
         .alert(
             "Remove @\(accountToRemove?.username ?? "account")?",
             isPresented: Binding(
