@@ -77,6 +77,7 @@ final class AppState {
     let networkMonitor = NetworkMonitor()
     var showSettings = false
     var workflowCheckError: String?
+    var isSyncingRepos = false
 
     // MARK: - Data Schema Versioning
 
@@ -215,6 +216,69 @@ final class AppState {
         }
         Task { await poller.removeClient(for: account.id) }
         restartPolling()
+    }
+
+    /// Re-fetch repositories for all accounts from GitHub, preserving monitoring preferences.
+    func syncRepositories() async {
+        guard !accounts.isEmpty else { return }
+        isSyncingRepos = true
+        defer { isSyncingRepos = false }
+
+        let previouslyMonitored = Set(repositories.filter(\.isMonitored).map(\.id))
+        var allRepos: [Repository] = []
+
+        for account in accounts {
+            guard let token = KeychainHelper.loadToken(for: account.id) else { continue }
+            let client = GitHubAPIClient(token: token)
+
+            do {
+                let repoResponses = try await client.fetchRepositories()
+                let batchSize = 10
+                for batchStart in stride(from: 0, to: repoResponses.count, by: batchSize) {
+                    let batch = repoResponses[batchStart..<min(batchStart + batchSize, repoResponses.count)]
+                    let batchResults: [Repository] = await withTaskGroup(of: Repository.self) { group in
+                        for resp in batch {
+                            group.addTask {
+                                let parts = resp.fullName.split(separator: "/")
+                                guard parts.count == 2 else {
+                                    return Repository(
+                                        id: resp.id, fullName: resp.fullName,
+                                        defaultBranch: resp.defaultBranch, isPrivate: resp.isPrivate,
+                                        hasWorkflows: false, accountID: account.id, pushedAt: resp.pushedAt
+                                    )
+                                }
+                                let has = (try? await client.fetchHasWorkflows(
+                                    owner: String(parts[0]), repo: String(parts[1])
+                                )) ?? false
+                                return Repository(
+                                    id: resp.id, fullName: resp.fullName,
+                                    defaultBranch: resp.defaultBranch, isPrivate: resp.isPrivate,
+                                    hasWorkflows: has, accountID: account.id, pushedAt: resp.pushedAt
+                                )
+                            }
+                        }
+                        var collected: [Repository] = []
+                        for await repo in group { collected.append(repo) }
+                        return collected
+                    }
+                    allRepos.append(contentsOf: batchResults)
+                }
+            } catch {
+                logger.warning("Failed to sync repos for \(account.name): \(error)")
+            }
+        }
+
+        // Preserve monitoring preferences
+        for i in allRepos.indices {
+            if previouslyMonitored.contains(allRepos[i].id) {
+                allRepos[i].isMonitored = true
+            }
+        }
+
+        // Replace repo list, keeping repos from accounts that failed to sync
+        let syncedAccountIDs = Set(allRepos.map(\.accountID))
+        let unsyncedRepos = repositories.filter { !syncedAccountIDs.contains($0.accountID) }
+        repositories = unsyncedRepos + allRepos
     }
 
     private func rebuildClients() {

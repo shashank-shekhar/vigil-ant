@@ -66,6 +66,25 @@ struct RepositoriesTab: View {
                     Text("\(appState.repositories.filter(\.isMonitored).count)/\(appState.repositories.count) selected")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
+
+                    Button {
+                        Task { await appState.syncRepositories() }
+                    } label: {
+                        if appState.isSyncingRepos {
+                            ProgressView()
+                                .controlSize(.small)
+                                .scaleEffect(0.7)
+                                .frame(width: 14, height: 14)
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                                .font(.system(size: 11))
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.blue)
+                    .disabled(appState.isSyncingRepos)
+                    .help("Refresh repository list from GitHub")
+                    .padding(.leading, 8)
                 }
             }
             .padding(.horizontal, 16)

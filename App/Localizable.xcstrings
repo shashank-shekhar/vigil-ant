@@ -287,6 +287,9 @@
     "Refresh" : {
       "comment" : "Refresh button in popover footer"
     },
+    "Refresh repository list from GitHub" : {
+
+    },
     "Refreshes CI status for all repositories" : {
       "comment" : "Accessibility hint for refresh button"
     },
