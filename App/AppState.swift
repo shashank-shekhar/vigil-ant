@@ -495,6 +495,12 @@ final class AppState {
             aggregator.update(repo: repo, account: account, status: buildStatus)
         }
 
+        // Seed previousStatuses so the first poll after restart doesn't
+        // re-notify for failures that were already reported last session.
+        for (repoID, entry) in aggregator.repoStatuses {
+            previousStatuses[repoID] = entry.status.status
+        }
+
         if !cached.isEmpty {
             logger.info("Restored \(cached.count) cached status entries")
         }
