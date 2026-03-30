@@ -38,7 +38,7 @@ struct AccountsTab: View {
                         get: { editingAccountIndex == index },
                         set: { if !$0 { editingAccountIndex = nil } }
                     )) {
-                        IconPickerView(selectedSymbol: $appState.accounts[index].iconSymbol)
+                        AccountCustomizeView(account: $appState.accounts[index])
                     }
 
                     if reAuthAccount?.id == account.id {
@@ -452,8 +452,13 @@ struct AccountCard: View {
             Spacer()
 
             if !isAuthFailed {
-                Button("Customize", action: onChangeIcon)
-                    .font(.system(size: 12))
+                Button(action: onChangeIcon) {
+                    Image("icon-settings")
+                        .resizable()
+                        .frame(width: 14, height: 14)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
 
             Button(action: onRemove) {

@@ -97,6 +97,12 @@
     "Automatically check for updates" : {
       "comment" : "Toggle for automatic update checking"
     },
+    "Build failures" : {
+
+    },
+    "Build fixed" : {
+
+    },
     "building" : {
 
     },
@@ -108,9 +114,6 @@
     },
     "Check for Updates…" : {
       "comment" : "Button to manually check for updates"
-    },
-    "Choose an Icon" : {
-
     },
     "CI Status" : {
       "comment" : "Popover header title"
@@ -124,9 +127,6 @@
     "Copy Code" : {
 
     },
-    "Customize" : {
-
-    },
     "Deselect All" : {
       "comment" : "Deselect all repos button in section header"
     },
@@ -134,6 +134,12 @@
       "comment" : "Confirmation dialog option to delete repos when removing account"
     },
     "Dismiss" : {
+
+    },
+    "Display" : {
+
+    },
+    "Display Name" : {
 
     },
     "Enable notifications" : {
@@ -180,6 +186,12 @@
       "comment" : "Accessibility label for rate limit banner"
     },
     "Group notifications" : {
+
+    },
+    "Hide owner prefix from repo names" : {
+
+    },
+    "Icon" : {
 
     },
     "Keep Repositories" : {

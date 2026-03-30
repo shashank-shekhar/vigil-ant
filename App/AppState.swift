@@ -147,13 +147,18 @@ final class AppState {
         observeNetworkChanges()
 
         NotificationManager.shared.requestPermission()
-        onStatusChange = { _, event in
+        onStatusChange = { [weak self] _, event in
+            guard let self else { return }
             switch event {
             case .failure(let entry):
+                let account = self.accounts.first { $0.id == entry.repo.accountID }
+                guard account?.notifyOnFailure ?? true else { return }
                 NotificationManager.shared.notifyBuildFailure(
                     repo: entry.repo, buildURL: entry.status.buildURL
                 )
             case .fixed(let entry):
+                let account = self.accounts.first { $0.id == entry.repo.accountID }
+                guard account?.notifyOnFixed ?? true else { return }
                 NotificationManager.shared.notifyBuildFixed(
                     repo: entry.repo, buildURL: entry.status.buildURL
                 )

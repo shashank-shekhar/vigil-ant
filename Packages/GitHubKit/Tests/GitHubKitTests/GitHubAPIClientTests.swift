@@ -77,7 +77,8 @@ func makeTestClient(token: String = "test-token") -> GitHubAPIClient {
         #expect(result1!.workflowRuns.isEmpty)
 
         let result2: WorkflowRunsResponse? = try await client.getWithETag("/repos/acme/api/actions/runs")
-        #expect(result2 == nil) // nil means "not modified"
+        #expect(result2 != nil) // 304 returns cached response
+        #expect(result2!.workflowRuns.isEmpty)
         #expect(callCount == 2)
     }
 

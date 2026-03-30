@@ -5,6 +5,7 @@ public actor GitHubAPIClient {
     private let session: URLSession
     private let baseURL = URL(string: "https://api.github.com")!
     private var etagCache: [String: String] = [:]
+    private var responseCache: [String: Data] = [:]
     private var rateLimitResetDate: Date?
 
     public init(token: String, session: URLSession = .shared) {
@@ -31,7 +32,8 @@ public actor GitHubAPIClient {
         return try Self.decoder.decode(T.self, from: data)
     }
 
-    /// Returns nil if the server responds 304 Not Modified (data hasn't changed).
+    /// Returns the cached response on 304 Not Modified, or the fresh response on 200.
+    /// Only returns nil if the server returns 304 and there is no cached response (should not happen).
     public func getWithETag<T: Decodable & Sendable>(_ path: String) async throws -> T? {
         guard let url = URL(string: baseURL.absoluteString + path) else {
             throw GitHubAPIError.invalidResponse
@@ -47,6 +49,10 @@ public actor GitHubAPIClient {
         let (data, httpResponse) = try await executeRequest(request)
 
         if httpResponse.statusCode == 304 {
+            // Data hasn't changed — return the cached response
+            if let cached = responseCache[path] {
+                return try Self.decoder.decode(T.self, from: cached)
+            }
             return nil
         }
 
@@ -58,6 +64,7 @@ public actor GitHubAPIClient {
             throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode)
         }
 
+        responseCache[path] = data
         return try Self.decoder.decode(T.self, from: data)
     }
 

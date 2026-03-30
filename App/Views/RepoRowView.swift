@@ -5,7 +5,15 @@ import GitHubKit
 struct RepoRowView: View {
     let entry: RepoStatusEntry
     var isNotFound: Bool = false
+    var hideOwnerPrefix: Bool = false
     @State private var isSpinning = false
+
+    private var repoDisplayName: String {
+        if hideOwnerPrefix, let slashIndex = entry.repo.fullName.firstIndex(of: "/") {
+            return String(entry.repo.fullName[entry.repo.fullName.index(after: slashIndex)...])
+        }
+        return entry.repo.fullName
+    }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -18,7 +26,7 @@ struct RepoRowView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.repo.fullName)
+                Text(repoDisplayName)
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(isNotFound ? .secondary : .primary)
 
@@ -51,7 +59,7 @@ struct RepoRowView: View {
             }
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(entry.repo.fullName): \(accessibilityStatusLabel)")
+        .accessibilityLabel("\(repoDisplayName): \(accessibilityStatusLabel)")
         .accessibilityHint(entry.status.buildURL != nil ? String(localized: "Opens build in browser") : "")
         .onTapGesture {
             if let url = entry.status.buildURL {
