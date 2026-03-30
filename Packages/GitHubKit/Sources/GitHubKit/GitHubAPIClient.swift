@@ -15,6 +15,8 @@ public actor GitHubAPIClient {
 
     public func updateToken(_ newToken: String) {
         token = newToken
+        etagCache.removeAll()
+        responseCache.removeAll()
     }
 
     public func get<T: Decodable & Sendable>(_ path: String) async throws -> T {

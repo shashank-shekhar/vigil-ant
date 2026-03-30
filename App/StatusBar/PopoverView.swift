@@ -78,7 +78,7 @@ struct PopoverView: View {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(aggregator.sortedAccounts(), id: \.id) { account in
                             let entries = aggregator.sortedEntries(for: account.id)
-                                .filter { $0.status.status != .unknown || aggregator.notFoundRepoIDs.contains($0.repo.id) }
+                                .filter { $0.status.status != .unknown || $0.repo.hasWorkflows || aggregator.notFoundRepoIDs.contains($0.repo.id) }
                             if !entries.isEmpty {
                                 AccountSectionView(
                                     account: account,
