@@ -116,7 +116,7 @@ func renderIcon(variant: IconVariant, pointSize: CGFloat, scale: Int) -> NSImage
         guard let ctx = NSGraphicsContext.current?.cgContext else { return false }
 
         // --- Draw base bug-ant icon ---
-        let iconSize = pixelSize * 0.75
+        let iconSize = pixelSize * 0.85
         let yOffset = pixelSize * 0.05
         let iconX = (pixelSize - iconSize) / 2
         let iconY = (pixelSize - iconSize) / 2 + yOffset
@@ -143,7 +143,7 @@ func renderIcon(variant: IconVariant, pointSize: CGFloat, scale: Int) -> NSImage
             ctx.fillEllipse(in: badgeRect)
 
             // Punch out the number using destination-out blend mode
-            let fontSize = text.count > 2 ? badgeSize * 0.42 : badgeSize * 0.58
+            let fontSize = text.count > 2 ? badgeSize * 0.55 : badgeSize * 0.72
             let font = NSFont.systemFont(ofSize: fontSize, weight: .bold)
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: font,
@@ -164,15 +164,10 @@ func renderIcon(variant: IconVariant, pointSize: CGFloat, scale: Int) -> NSImage
             // Checkmark badge for "ok" status
             ctx.saveGState()
 
-            let checkSize = badgeSize * 0.75
-            let checkX = badgeRect.midX - checkSize / 2
-            let checkY = badgeRect.midY - checkSize / 2
-
-            let symbolConfig = NSImage.SymbolConfiguration(pointSize: checkSize * 0.5, weight: .bold)
+            let symbolConfig = NSImage.SymbolConfiguration(pointSize: badgeSize * 0.5, weight: .bold)
             if let checkImage = NSImage(systemSymbolName: "checkmark.circle.fill", accessibilityDescription: nil)?
                 .withSymbolConfiguration(symbolConfig) {
-                let checkRect = CGRect(x: checkX, y: checkY, width: checkSize, height: checkSize)
-                checkImage.draw(in: checkRect)
+                checkImage.draw(in: badgeRect)
             }
 
             ctx.restoreGState()

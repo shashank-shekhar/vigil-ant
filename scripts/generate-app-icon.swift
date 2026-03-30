@@ -155,6 +155,15 @@ func pngData(from image: NSImage) -> Data? {
 // Generate icons
 print("Generating app icons...")
 
+do {
+    try FileManager.default.createDirectory(
+        atPath: iconsetPath,
+        withIntermediateDirectories: true
+    )
+} catch {
+    print("  ✗ Failed to create directory \(iconsetPath): \(error)")
+}
+
 var contentsImages: [[String: String]] = []
 
 for iconSize in sizes {
@@ -163,8 +172,13 @@ for iconSize in sizes {
         print("  ✗ Failed to generate \(iconSize.filename)")
         continue
     }
-    try data.write(to: URL(fileURLWithPath: "\(iconsetPath)/\(iconSize.filename)"))
-    print("  ✓ \(iconSize.filename) (\(iconSize.pixels)x\(iconSize.pixels)px)")
+    do {
+        try data.write(to: URL(fileURLWithPath: "\(iconsetPath)/\(iconSize.filename)"))
+        print("  ✓ \(iconSize.filename) (\(iconSize.pixels)x\(iconSize.pixels)px)")
+    } catch {
+        print("  ✗ Failed to write \(iconSize.filename): \(error)")
+        continue
+    }
 
     contentsImages.append([
         "filename": iconSize.filename,
@@ -175,15 +189,19 @@ for iconSize in sizes {
 }
 
 // Write Contents.json
-let contents: [String: Any] = [
-    "images": contentsImages,
-    "info": [
-        "author": "xcode",
-        "version": 1,
-    ] as [String: Any],
-]
-let jsonData = try JSONSerialization.data(withJSONObject: contents, options: [.prettyPrinted, .sortedKeys])
-var jsonString = String(data: jsonData, encoding: .utf8)! + "\n"
-try jsonString.write(toFile: "\(iconsetPath)/Contents.json", atomically: true, encoding: .utf8)
+do {
+    let contents: [String: Any] = [
+        "images": contentsImages,
+        "info": [
+            "author": "xcode",
+            "version": 1,
+        ] as [String: Any],
+    ]
+    let jsonData = try JSONSerialization.data(withJSONObject: contents, options: [.prettyPrinted, .sortedKeys])
+    let jsonString = String(data: jsonData, encoding: .utf8)! + "\n"
+    try jsonString.write(toFile: "\(iconsetPath)/Contents.json", atomically: true, encoding: .utf8)
+} catch {
+    print("  ✗ Failed to write Contents.json: \(error)")
+}
 
 print("\nDone! Generated \(sizes.count) app icon sizes.")
