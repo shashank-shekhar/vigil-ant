@@ -130,20 +130,29 @@ func renderIcon(variant: IconVariant, pointSize: CGFloat, scale: Int) -> NSImage
 
         // --- Draw badge ---
         let badgeSize = pixelSize * 0.45
-        let badgeX = pixelSize - badgeSize + pixelSize * 0.05
         let badgeY: CGFloat = -pixelSize * 0.05  // bottom-right in flipped=false coords is top-right visually
-        let badgeRect = CGRect(x: badgeX, y: badgeY, width: badgeSize, height: badgeSize)
+        let isWide = (variant.badgeText?.count ?? 0) > 2
+        let badgeWidth = isWide ? badgeSize * 1.55 : badgeSize
+        let badgeX = pixelSize - badgeWidth + pixelSize * 0.05
+        let badgeRect = CGRect(x: badgeX, y: badgeY, width: badgeWidth, height: badgeSize)
 
         if let text = variant.badgeText {
-            // Number badge: filled circle with number punched out
+            // Number badge: filled shape with number punched out
             ctx.saveGState()
 
-            // Fill badge circle solid
             ctx.setFillColor(NSColor.black.cgColor)
-            ctx.fillEllipse(in: badgeRect)
+            if isWide {
+                // Capsule (rounded rect) for wide text like "10+"
+                let capsulePath = CGPath(roundedRect: badgeRect, cornerWidth: badgeSize / 2, cornerHeight: badgeSize / 2, transform: nil)
+                ctx.addPath(capsulePath)
+                ctx.fillPath()
+            } else {
+                // Circle for single/double digit numbers
+                ctx.fillEllipse(in: badgeRect)
+            }
 
             // Punch out the number using destination-out blend mode
-            let fontSize = text.count > 2 ? badgeSize * 0.55 : badgeSize * 0.72
+            let fontSize = isWide ? badgeSize * 0.7 : badgeSize * 0.72
             let font = NSFont.systemFont(ofSize: fontSize, weight: .bold)
             let attributes: [NSAttributedString.Key: Any] = [
                 .font: font,
