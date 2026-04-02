@@ -3,7 +3,7 @@ import Foundation
 public actor GitHubAPIClient {
     private var token: String
     private let session: URLSession
-    private let baseURL = URL(string: "https://api.github.com")!
+    private let baseURL: URL
     private var etagCache: [String: String] = [:]
     private var responseCache: [String: Data] = [:]
     private var rateLimitResetDate: Date?
@@ -11,6 +11,12 @@ public actor GitHubAPIClient {
     public init(token: String, session: URLSession = .shared) {
         self.token = token
         self.session = session
+        if let override = ProcessInfo.processInfo.environment["GITHUB_BASE_URL"],
+           let url = URL(string: override) {
+            self.baseURL = url
+        } else {
+            self.baseURL = URL(string: "https://api.github.com")!
+        }
     }
 
     public func updateToken(_ newToken: String) {

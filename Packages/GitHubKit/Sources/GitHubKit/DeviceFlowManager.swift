@@ -61,12 +61,26 @@ public struct TokenResponse: Sendable {
 public struct DeviceFlowManager: Sendable {
     private let clientID: String
 
+    /// Base URL for OAuth endpoints (github.com in production).
+    private static var authBaseURL: URL {
+        if let override = ProcessInfo.processInfo.environment["GITHUB_BASE_URL"],
+           let url = URL(string: override) { return url }
+        return URL(string: "https://github.com")!
+    }
+
+    /// Base URL for API endpoints (api.github.com in production).
+    private static var apiBaseURL: URL {
+        if let override = ProcessInfo.processInfo.environment["GITHUB_BASE_URL"],
+           let url = URL(string: override) { return url }
+        return URL(string: "https://api.github.com")!
+    }
+
     public init(clientID: String) {
         self.clientID = clientID
     }
 
     public func requestDeviceCode(session: URLSession = .shared) async throws -> DeviceCode {
-        var request = URLRequest(url: URL(string: "https://github.com/login/device/code")!)
+        var request = URLRequest(url: Self.authBaseURL.appendingPathComponent("login/device/code"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
@@ -103,7 +117,7 @@ public struct DeviceFlowManager: Sendable {
                 try await Task.sleep(for: .seconds(currentInterval))
             }
 
-            var request = URLRequest(url: URL(string: "https://github.com/login/oauth/access_token")!)
+            var request = URLRequest(url: Self.authBaseURL.appendingPathComponent("login/oauth/access_token"))
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Accept")
             request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
@@ -145,7 +159,7 @@ public struct DeviceFlowManager: Sendable {
     }
 
     public func fetchUser(token: String, session: URLSession = .shared) async throws -> GitHubUser {
-        var request = URLRequest(url: URL(string: "https://api.github.com/user")!)
+        var request = URLRequest(url: Self.apiBaseURL.appendingPathComponent("user"))
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
@@ -176,7 +190,7 @@ public struct DeviceFlowManager: Sendable {
 
     /// Exchange a refresh token for a new access token (and rotated refresh token).
     public func refreshToken(refreshToken: String, session: URLSession = .shared) async throws -> TokenResponse {
-        var request = URLRequest(url: URL(string: "https://github.com/login/oauth/access_token")!)
+        var request = URLRequest(url: Self.authBaseURL.appendingPathComponent("login/oauth/access_token"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
