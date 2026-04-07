@@ -97,6 +97,7 @@ struct RepositoriesTab: View {
                         if !collapsedAccounts.contains(account.id) {
                             ForEach(repos.indices, id: \.self) { index in
                                 repoRow(repos[index])
+                                    .listRowBackground(index.isMultiple(of: 2) ? Color.clear : Color.white.opacity(0.03))
                             }
                         }
                     } header: {
