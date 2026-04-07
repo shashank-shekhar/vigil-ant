@@ -13,65 +13,76 @@ struct AccountsTab: View {
     @State private var addAccountState = AddAccountState.idle
     @State private var pollingTask: Task<Void, Never>?
     @State private var showCopied = false
-    @State private var editingAccountIndex: Int?
+    @State private var editingAccountID: UUID?
     @State private var accountToRemove: Account?
     @State private var fetchProgress: (current: Int, total: Int)?
     @State private var reAuthAccount: Account?
     @State private var reAuthState: AddAccountState = .idle
     @State private var reAuthPollingTask: Task<Void, Never>?
 
-    var body: some View {
-        VStack(spacing: 12) {
-            ForEach(Array(appState.accounts.enumerated()), id: \.element.id) { index, account in
-                VStack(spacing: 0) {
-                    AccountCard(
-                        account: account,
-                        repoCount: appState.repositories.filter { $0.accountID == account.id && $0.isMonitored }.count,
-                        isAuthFailed: appState.aggregator.authFailedAccountIDs.contains(account.id),
-                        onChangeIcon: {
-                            editingAccountIndex = index
-                        },
-                        onRemove: { accountToRemove = account },
-                        onReAuthenticate: { startReAuthFlow(for: account) }
-                    )
-                    .popover(isPresented: Binding(
-                        get: { editingAccountIndex == index },
-                        set: { if !$0 { editingAccountIndex = nil } }
-                    )) {
-                        AccountCustomizeView(account: $appState.accounts[index])
-                    }
+    private var sortedAccounts: [Account] {
+        appState.accounts.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+    }
 
-                    if reAuthAccount?.id == account.id {
-                        switch reAuthState {
-                        case .waitingForAuth(let code):
-                            reAuthDeviceCodeCard(code, account: account)
-                        case .error(let message):
-                            reAuthErrorCard(message)
-                        case .idle:
-                            EmptyView()
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                if appState.accounts.count >= 3, case .idle = addAccountState {
+                    addAccountButton
+                }
+
+                ForEach(sortedAccounts) { account in
+                    VStack(spacing: 0) {
+                        AccountCard(
+                            account: account,
+                            repoCount: appState.repositories.filter { $0.accountID == account.id && $0.isMonitored }.count,
+                            isAuthFailed: appState.aggregator.authFailedAccountIDs.contains(account.id),
+                            onChangeIcon: {
+                                editingAccountID = account.id
+                            },
+                            onRemove: { accountToRemove = account },
+                            onReAuthenticate: { startReAuthFlow(for: account) }
+                        )
+                        .popover(isPresented: Binding(
+                            get: { editingAccountID == account.id },
+                            set: { if !$0 { editingAccountID = nil } }
+                        )) {
+                            if let idx = appState.accounts.firstIndex(where: { $0.id == account.id }) {
+                                AccountCustomizeView(account: $appState.accounts[idx])
+                            }
+                        }
+
+                        if reAuthAccount?.id == account.id {
+                            switch reAuthState {
+                            case .waitingForAuth(let code):
+                                reAuthDeviceCodeCard(code, account: account)
+                            case .error(let message):
+                                reAuthErrorCard(message)
+                            case .idle:
+                                EmptyView()
+                            }
                         }
                     }
                 }
+
+                switch addAccountState {
+                case .idle:
+                    addAccountButton
+
+                case .waitingForAuth(let code):
+                    deviceCodeCard(code)
+
+                case .error(let message):
+                    errorCard(message)
+                }
+
+                if let progress = fetchProgress {
+                    fetchProgressView(current: progress.current, total: progress.total)
+                }
             }
-
-            switch addAccountState {
-            case .idle:
-                addAccountButton
-
-            case .waitingForAuth(let code):
-                deviceCodeCard(code)
-
-            case .error(let message):
-                errorCard(message)
-            }
-
-            if let progress = fetchProgress {
-                fetchProgressView(current: progress.current, total: progress.total)
-            }
-
-            Spacer()
+            .padding(16)
         }
-        .padding(16)
+        .scrollBounceBehavior(.basedOnSize)
         .alert(
             "Remove @\(accountToRemove?.username ?? "account")?",
             isPresented: Binding(

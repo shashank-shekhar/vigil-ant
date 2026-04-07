@@ -22,7 +22,8 @@ struct SettingsView: View {
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(AppState.SettingsTab.about)
         }
-        .frame(width: 520, height: 420)
+        .frame(minWidth: 520, maxWidth: 520,
+               minHeight: 350, idealHeight: 420, maxHeight: 800)
         .onAppear {
             NSApp.setActivationPolicy(.regular)
         }
