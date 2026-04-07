@@ -114,6 +114,7 @@ struct RepositoriesTab: View {
                     }
                 }
             }
+            .listStyle(.plain)
         }
     }
 
@@ -132,6 +133,14 @@ struct RepositoriesTab: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(
+            Color.white.opacity(0.06)
+                .padding(.horizontal, -20)
+                .padding(.vertical, -6)
+        )
     }
 
     private func filteredRepos(for accountID: UUID) -> [Repository] {
