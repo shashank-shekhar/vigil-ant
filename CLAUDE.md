@@ -77,3 +77,23 @@ GitHub App Client ID and Sparkle public key are injected at build time via `Secr
 - **Keychain** — access tokens and refresh tokens (never UserDefaults).
 - **Schema versioning** — `dataSchemaVersion` in UserDefaults with migration logic in `AppState.init`.
 - **Network monitor** — `NetworkMonitor` (@Observable) watches NWPathMonitor; triggers automatic refresh when connectivity is restored.
+
+## Ticket Workflow
+
+A `UserPromptSubmit` hook (`.claude/hooks/ticket-check.sh`) injects ticket state into every conversation turn.
+
+**When the hook reports `NO_ACTIVE_TICKET`:** If the user's prompt is a feature request, bug report, or change request, suggest using `/ticket <description>` to create a GitHub issue first. Proceed normally for questions, debugging, or non-feature work.
+
+**When the hook reports `ACTIVE_TICKET`:** Work is scoped to that ticket. Stay focused on the issue.
+
+**Commands:**
+- `/ticket <description>` — Draft and create a GitHub issue, then optionally start work
+- `/tickets` — List open issues, pick one to work on
+- `/ticket-done` — Commit, push, close the GitHub issue, and clear active ticket state
+
+**State:** `.claude/current-ticket` tracks the active issue (gitignored). Scripts in `.claude/hooks/` handle all deterministic operations (create, list, start, done).
+
+**Safety guards:**
+- `ticket-start.sh` always branches from `main` (pulls latest first) and refuses to start with a dirty working tree
+- `ticket-done.sh` refuses to clear state if there are uncommitted changes or unpushed commits
+- `/ticket` warns if there is already an active ticket
