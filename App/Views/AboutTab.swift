@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AboutTab: View {
+    @State private var showingLicenses = false
+
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
     }
@@ -36,16 +38,23 @@ struct AboutTab: View {
 
             Spacer()
 
-            Link("View on GitHub", destination: URL(string: "https://github.com/shashank-shekhar/vigil-ant")!)
-                .font(.subheadline)
+            HStack(spacing: 12) {
+                Button("GitHub") {
+                    NSWorkspace.shared.open(URL(string: "https://github.com/shashank-shekhar/vigil-ant")!)
+                }
 
-            Text("© 2026 Shashank Shekhar")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+                Button("Licenses") {
+                    showingLicenses = true
+                }
+            }
+            .font(.subheadline)
 
             Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(16)
+        .sheet(isPresented: $showingLicenses) {
+            LicensesView()
+        }
     }
 }
