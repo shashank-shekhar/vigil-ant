@@ -31,6 +31,7 @@
 		98D881872F6ED003004D39FC /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 98D881862F6ED003004D39FC /* Localizable.xcstrings */; };
 		98D881892F6ED004004D39FC /* SparkleUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D881882F6ED004004D39FC /* SparkleUpdater.swift */; };
 		98D8818B2F8C0001004D39FC /* AboutTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D8818A2F8C0001004D39FC /* AboutTab.swift */; };
+		98D8818C2FA00001004D39FC /* LicensesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D8818D2FA00001004D39FC /* LicensesView.swift */; };
 		98D881AB2F70A407004D39FC /* IconImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D881AA2F70A407004D39FC /* IconImage.swift */; };
 		98D881AC2F9025F3004D39FC /* WelcomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D881AD2F9025F3004D39FC /* WelcomeView.swift */; };
 		98D881B02F9025F3004D39FC /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 98D881B12F9025F3004D39FC /* Sparkle */; };
@@ -59,6 +60,7 @@
 		98D881862F6ED003004D39FC /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		98D881882F6ED004004D39FC /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
 		98D8818A2F8C0001004D39FC /* AboutTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutTab.swift; sourceTree = "<group>"; };
+		98D8818D2FA00001004D39FC /* LicensesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicensesView.swift; sourceTree = "<group>"; };
 		98D881AA2F70A407004D39FC /* IconImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconImage.swift; sourceTree = "<group>"; };
 		98D881AD2F9025F3004D39FC /* WelcomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeView.swift; sourceTree = "<group>"; };
 		98D881AE2F9025F3004D39FC /* Secrets.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Secrets.xcconfig; path = ../Secrets.xcconfig; sourceTree = SOURCE_ROOT; };
@@ -135,6 +137,7 @@
 			children = (
 				98D881AA2F70A407004D39FC /* IconImage.swift */,
 				98D8818A2F8C0001004D39FC /* AboutTab.swift */,
+				98D8818D2FA00001004D39FC /* LicensesView.swift */,
 				98D881532F6925F3004D39FC /* AccountSectionView.swift */,
 				98D881542F6925F3004D39FC /* AccountsTab.swift */,
 				98D881552F6925F3004D39FC /* GeneralTab.swift */,
@@ -274,6 +277,7 @@
 				98D881852F6ED002004D39FC /* CrashReporter.swift in Sources */,
 				98D881892F6ED004004D39FC /* SparkleUpdater.swift in Sources */,
 				98D8818B2F8C0001004D39FC /* AboutTab.swift in Sources */,
+				98D8818C2FA00001004D39FC /* LicensesView.swift in Sources */,
 				98D881AC2F9025F3004D39FC /* WelcomeView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -17,3 +17,6 @@ Secrets.xcconfig
 
 # Plugins
 .superpowers/
+
+# Claude Code ticket state
+.claude/current-ticket
