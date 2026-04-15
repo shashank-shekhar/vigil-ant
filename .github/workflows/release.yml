@@ -175,3 +175,20 @@ jobs:
             "build/Vigil-ant-${VERSION}.dmg" \
             --title "Vigil-ant ${VERSION}" \
             --notes "$BODY"
+
+      - name: Update Homebrew tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+          DMG_SHA: ${{ steps.checksums.outputs.dmg_sha }}
+        run: |
+          CASK_FILE="Casks/vigil-ant.rb"
+          gh repo clone shashank-shekhar/homebrew-vigil-ant /tmp/homebrew-tap
+          cd /tmp/homebrew-tap
+          sed -i '' "s/version \".*\"/version \"${VERSION}\"/" "$CASK_FILE"
+          sed -i '' "s/sha256 \".*\"/sha256 \"${DMG_SHA}\"/" "$CASK_FILE"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add "$CASK_FILE"
+          git commit -m "bump vigil-ant to ${VERSION}"
+          git push
