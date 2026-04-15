@@ -98,25 +98,24 @@ jobs:
           PUB_DATE=$(date -R)
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Vigil-ant-${VERSION}.zip"
 
-          # Build the new item XML
-          ITEM=$(cat << ITEM_EOF
-            <item>
-                <title>Version ${VERSION}</title>
-                <pubDate>${PUB_DATE}</pubDate>
-                <sparkle:version>${VERSION}</sparkle:version>
-                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
-                <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
-                <enclosure
-                    url="${DOWNLOAD_URL}"
-                    length="${FILE_SIZE}"
-                    type="application/octet-stream"
-                    sparkle:edSignature="${SIGNATURE}" />
-            </item>
-          ITEM_EOF
-          )
-
-          # Insert item before </channel>
-          sed -i '' "s|</channel>|${ITEM}\n    </channel>|" appcast.xml
+          # Insert new item before </channel> using awk (sed can't handle multiline on macOS)
+          awk -v ver="$VERSION" -v pub="$PUB_DATE" -v url="$DOWNLOAD_URL" \
+              -v size="$FILE_SIZE" -v sig="$SIGNATURE" \
+              '/<\/channel>/ {
+                print "        <item>"
+                print "            <title>Version " ver "</title>"
+                print "            <pubDate>" pub "</pubDate>"
+                print "            <sparkle:version>" ver "</sparkle:version>"
+                print "            <sparkle:shortVersionString>" ver "</sparkle:shortVersionString>"
+                print "            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>"
+                print "            <enclosure"
+                print "                url=\"" url "\""
+                print "                length=\"" size "\""
+                print "                type=\"application/octet-stream\""
+                print "                sparkle:edSignature=\"" sig "\" />"
+                print "        </item>"
+              } {print}' appcast.xml > appcast_tmp.xml
+          mv appcast_tmp.xml appcast.xml
 
       - name: Commit appcast.xml
         run: |
