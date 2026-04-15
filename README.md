@@ -96,8 +96,7 @@ python3 scripts/mock-github-server.py "3s2f1r1n" "3s2f1r" "10f"
 Set `GITHUB_BASE_URL=http://localhost:8787` in your Xcode scheme, then add accounts through the normal UI — auth completes instantly. See [MOCK_SERVER.md](MOCK_SERVER.md) for the full details.
 
 ## License
-
-AGPL-3.0
+MIT
 
 ## Contributing
 
