@@ -178,12 +178,12 @@ jobs:
 
       - name: Update Homebrew tap
         env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           VERSION: ${{ steps.version.outputs.version }}
           DMG_SHA: ${{ steps.checksums.outputs.dmg_sha }}
         run: |
           CASK_FILE="Casks/vigil-ant.rb"
-          gh repo clone shashank-shekhar/homebrew-vigil-ant /tmp/homebrew-tap
+          git clone "https://x-access-token:${HOMEBREW_TAP_TOKEN}@github.com/shashank-shekhar/homebrew-vigil-ant.git" /tmp/homebrew-tap
           cd /tmp/homebrew-tap
           sed -i '' "s/version \".*\"/version \"${VERSION}\"/" "$CASK_FILE"
           sed -i '' "s/sha256 \".*\"/sha256 \"${DMG_SHA}\"/" "$CASK_FILE"
