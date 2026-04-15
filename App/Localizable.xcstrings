@@ -55,7 +55,7 @@
         }
       }
     },
-    "© 2026 Shashank Shekhar" : {
+    "© 2026 Shashank Shekhar. MIT License." : {
 
     },
     "+ Add GitHub Account" : {
@@ -142,6 +142,9 @@
     "Display Name" : {
 
     },
+    "Done" : {
+
+    },
     "Enable notifications" : {
 
     },
@@ -179,6 +182,9 @@
     "Get Started" : {
 
     },
+    "GitHub" : {
+
+    },
     "GitHub API rate limit reached — polling paused temporarily." : {
       "comment" : "Rate limit banner message"
     },
@@ -211,6 +217,9 @@
     },
     "Launch at Login" : {
       "comment" : "Launch at login toggle"
+    },
+    "Licenses" : {
+
     },
     "Monitor GitHub CI/CD build status from your menu bar" : {
 
@@ -329,8 +338,14 @@
     "Sort:" : {
       "comment" : "Repository sort picker label"
     },
+    "Source" : {
+
+    },
     "Startup" : {
       "comment" : "General settings section header"
+    },
+    "Third-Party Licenses" : {
+
     },
     "Tip: Open settings anytime with the gear icon above" : {
 
@@ -353,9 +368,6 @@
           }
         }
       }
-    },
-    "View on GitHub" : {
-
     },
     "Vigil-ant" : {
 

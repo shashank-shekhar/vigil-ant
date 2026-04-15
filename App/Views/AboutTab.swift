@@ -36,6 +36,10 @@ struct AboutTab: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
+            Text("© 2026 Shashank Shekhar. MIT License.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+
             Spacer()
 
             HStack(spacing: 12) {
