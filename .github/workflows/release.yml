@@ -68,6 +68,17 @@ jobs:
           APP_NAME=$(ls -d *.app | head -1)
           ditto -c -k --keepParent "$APP_NAME" "../Vigil-ant-${{ steps.version.outputs.version }}.zip"
 
+      - name: Create DMG
+        run: |
+          mkdir -p build/dmg
+          cp -R build/export/*.app build/dmg/
+          ln -s /Applications build/dmg/Applications
+          hdiutil create -volname "Vigil-ant" \
+            -srcfolder build/dmg \
+            -ov -format UDZO \
+            "build/Vigil-ant-${{ steps.version.outputs.version }}.dmg"
+          rm -rf build/dmg
+
       - name: Sign update for Sparkle
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
@@ -127,13 +138,40 @@ jobs:
           git commit -m "release: update appcast for v${{ steps.version.outputs.version }}" || true
           git push origin main
 
+      - name: Generate checksums
+        id: checksums
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ZIP_SHA=$(shasum -a 256 "build/Vigil-ant-${VERSION}.zip" | awk '{print $1}')
+          DMG_SHA=$(shasum -a 256 "build/Vigil-ant-${VERSION}.dmg" | awk '{print $1}')
+          echo "zip_sha=${ZIP_SHA}" >> "$GITHUB_OUTPUT"
+          echo "dmg_sha=${DMG_SHA}" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}
           VERSION: ${{ steps.version.outputs.version }}
+          ZIP_SHA: ${{ steps.checksums.outputs.zip_sha }}
+          DMG_SHA: ${{ steps.checksums.outputs.dmg_sha }}
         run: |
+          # Generate notes via API, then append checksums
+          NOTES=$(gh api repos/${{ github.repository }}/releases/generate-notes \
+            -f tag_name="$TAG_NAME" --jq '.body')
+
+          BODY=$(cat << EOF
+          ${NOTES}
+
+          ## SHA-256 Checksums
+          \`\`\`
+          ${ZIP_SHA}  Vigil-ant-${VERSION}.zip
+          ${DMG_SHA}  Vigil-ant-${VERSION}.dmg
+          \`\`\`
+          EOF
+          )
+
           gh release create "$TAG_NAME" \
             "build/Vigil-ant-${VERSION}.zip" \
+            "build/Vigil-ant-${VERSION}.dmg" \
             --title "Vigil-ant ${VERSION}" \
-            --generate-notes
+            --notes "$BODY"
