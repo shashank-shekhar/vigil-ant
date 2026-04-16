@@ -55,7 +55,7 @@
         }
       }
     },
-    "© 2026 Shashank Shekhar. MIT License." : {
+    "© 2026 Shashank Shekhar" : {
 
     },
     "+ Add GitHub Account" : {
@@ -97,7 +97,7 @@
     "Automatically check for updates" : {
       "comment" : "Toggle for automatic update checking"
     },
-    "Build %@" : {
+    "Build #%@" : {
 
     },
     "Build failures" : {
@@ -228,6 +228,9 @@
       "comment" : "Launch at login toggle"
     },
     "Licenses" : {
+
+    },
+    "MIT License" : {
 
     },
     "Monitor GitHub CI/CD build status from your menu bar" : {
