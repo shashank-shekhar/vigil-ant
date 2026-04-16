@@ -1,7 +1,14 @@
+import OSLog
 import SwiftUI
 
 struct AboutTab: View {
     @State private var showingLicenses = false
+    @State private var logsCopyState: LogsCopyState = .idle
+
+    private enum LogsCopyState {
+        case idle, copying, copied
+    }
+    @State private var filterCopied = false
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -80,12 +87,21 @@ struct AboutTab: View {
                     showingLicenses = true
                 }
 
-                Button("Logs") {
-                    let command = "log stream --predicate 'subsystem == \"net.shashankshekhar.vigilant\"' --level debug"
-                    let source = "tell application \"Terminal\"\nactivate\ndo script \"\(command)\"\nend tell"
-                    if let script = NSAppleScript(source: source) {
-                        var error: NSDictionary?
-                        script.executeAndReturnError(&error)
+                Button(logsCopyLabel) {
+                    copyCurrentSessionLogs()
+                }
+                .disabled(logsCopyState == .copying)
+
+                Button(filterCopied ? "Filter copied!" : "Console") {
+                    let subsystem = Bundle.main.bundleIdentifier ?? "net.shashankshekhar.vigilant"
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString("subsystem:\(subsystem)", forType: .string)
+                    filterCopied = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                        NSWorkspace.shared.open(
+                            URL(fileURLWithPath: "/System/Applications/Utilities/Console.app")
+                        )
+                        filterCopied = false
                     }
                 }
             }
@@ -97,6 +113,44 @@ struct AboutTab: View {
         .padding(16)
         .sheet(isPresented: $showingLicenses) {
             LicensesView()
+        }
+    }
+
+    private var logsCopyLabel: String {
+        switch logsCopyState {
+        case .idle: "Copy Logs"
+        case .copying: "Copying\u{2026}"
+        case .copied: "Copied!"
+        }
+    }
+
+    private func copyCurrentSessionLogs() {
+        logsCopyState = .copying
+        Task.detached {
+            do {
+                let store = try OSLogStore(scope: .currentProcessIdentifier)
+                let position = store.position(timeIntervalSinceLatestBoot: 0)
+                let entries = try store.getEntries(at: position)
+                    .compactMap { $0 as? OSLogEntryLog }
+                    .map { "[\($0.date.formatted(.iso8601))] [\($0.category)] \($0.composedMessage)" }
+
+                let text = entries.joined(separator: "\n")
+                await MainActor.run {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text.isEmpty ? "No logs found for this session." : text, forType: .string)
+                    logsCopyState = .copied
+                }
+            } catch {
+                await MainActor.run {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString("Failed to read logs: \(error.localizedDescription)", forType: .string)
+                    logsCopyState = .copied
+                }
+            }
+            try? await Task.sleep(for: .seconds(2))
+            await MainActor.run {
+                logsCopyState = .idle
+            }
         }
     }
 }
