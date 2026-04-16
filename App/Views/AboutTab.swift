@@ -81,7 +81,8 @@ struct AboutTab: View {
                 }
 
                 Button("Logs") {
-                    let command = "log stream --predicate 'subsystem == \"net.shashankshekhar.vigilant\"' --level debug"
+                    let subsystem = Bundle.main.bundleIdentifier ?? "net.shashankshekhar.vigilant"
+                    let command = "log stream --predicate 'subsystem == \"\(subsystem)\"' --level debug"
                     let source = "tell application \"Terminal\"\nactivate\ndo script \"\(command)\"\nend tell"
                     if let script = NSAppleScript(source: source) {
                         var error: NSDictionary?
