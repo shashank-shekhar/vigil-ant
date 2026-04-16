@@ -191,6 +191,7 @@ jobs:
       - name: Update appcast.xml
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
           SIGNATURE: ${{ steps.sparkle.outputs.signature }}
         run: |
           ZIP_FILE="build/Vigil-ant-${VERSION}.zip"
@@ -198,14 +199,15 @@ jobs:
           PUB_DATE=$(date -R)
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/v${VERSION}/Vigil-ant-${VERSION}.zip"
 
-          # Insert new item before </channel> using awk (sed can't handle multiline on macOS)
-          awk -v ver="$VERSION" -v pub="$PUB_DATE" -v url="$DOWNLOAD_URL" \
+          # sparkle:version = build number (CFBundleVersion), used for update comparison
+          # sparkle:shortVersionString = marketing version (CFBundleShortVersionString), shown to user
+          awk -v ver="$VERSION" -v build="$BUILD_NUMBER" -v pub="$PUB_DATE" -v url="$DOWNLOAD_URL" \
               -v size="$FILE_SIZE" -v sig="$SIGNATURE" \
               '/<\/channel>/ {
                 print "        <item>"
                 print "            <title>Version " ver "</title>"
                 print "            <pubDate>" pub "</pubDate>"
-                print "            <sparkle:version>" ver "</sparkle:version>"
+                print "            <sparkle:version>" build "</sparkle:version>"
                 print "            <sparkle:shortVersionString>" ver "</sparkle:shortVersionString>"
                 print "            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>"
                 print "            <enclosure"
