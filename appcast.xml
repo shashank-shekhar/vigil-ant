@@ -40,5 +40,17 @@
                 type="application/octet-stream"
                 sparkle:edSignature="r210sSTh4bJ9nTVt2FoQWma0YmDfnFOwmgdzRpD22hP2wpbUoNmhmLX37yb8O5OQgqfEjvbm1xWR2N/BK5ifBg==" />
         </item>
+        <item>
+            <title>Version 0.0.5</title>
+            <pubDate>Thu, 16 Apr 2026 07:22:01 +0000</pubDate>
+            <sparkle:version>9</sparkle:version>
+            <sparkle:shortVersionString>0.0.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shashank-shekhar/vigil-ant/releases/download/v0.0.5/Vigil-ant-0.0.5.zip"
+                length="2445320"
+                type="application/octet-stream"
+                sparkle:edSignature="euHOkaaJ9DjFpkA+xVxSNlUF1AkMoIQHrG78YDWNeipzui73fbFiSkCBY9E+euVlYGIavfFcnYwfy1dLF8qyCw==" />
+        </item>
     </channel>
 </rss>
