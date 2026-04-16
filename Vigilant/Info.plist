@@ -8,6 +8,8 @@
 	<string>https://raw.githubusercontent.com/shashank-shekhar/vigil-ant/main/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>$(SPARKLE_PUBLIC_KEY)</string>
+	<key>SUEnableInstallerLauncherService</key>
+	<true/>
 	<key>GIT_COMMIT_HASH</key>
 	<string>$(GIT_COMMIT_HASH)</string>
 </dict>
