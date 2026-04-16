@@ -87,9 +87,14 @@ struct AboutTab: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            Text("© 2026 Shashank Shekhar. MIT License.")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            VStack(spacing: 2) {
+                Text("© 2026 Shashank Shekhar")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                Text("MIT License")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
 
             Spacer()
 
