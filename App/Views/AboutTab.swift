@@ -30,11 +30,10 @@ struct AboutTab: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Spacer()
-
             Image(nsImage: NSApp.applicationIconImage)
                 .resizable()
                 .frame(width: 128, height: 128)
+                .padding(.top, 8)
 
             Text(appName)
                 .font(.title)
@@ -96,8 +95,6 @@ struct AboutTab: View {
                     .foregroundStyle(.tertiary)
             }
 
-            Spacer()
-
             HStack(spacing: 12) {
                 Button("GitHub") {
                     NSWorkspace.shared.open(URL(string: Self.repoURL)!)
@@ -126,8 +123,7 @@ struct AboutTab: View {
                 }
             }
             .font(.subheadline)
-
-            Spacer()
+            .padding(.bottom, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(16)
