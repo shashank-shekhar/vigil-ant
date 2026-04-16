@@ -3,8 +3,22 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+      - 'docs/**'
+      - 'scripts/**'
+      - 'appcast.xml'
+      - '.github/workflows/release.yml'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '*.md'
+      - 'LICENSE'
+      - 'docs/**'
+      - 'scripts/**'
+      - 'appcast.xml'
+      - '.github/workflows/release.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -35,7 +49,12 @@ jobs:
       - name: Create Secrets.xcconfig
         env:
           GH_CLIENT_ID: ${{ secrets.GH_CLIENT_ID }}
-        run: echo "GH_CLIENT_ID = ${GH_CLIENT_ID:-placeholder}" > Secrets.xcconfig
+          SPARKLE_PUBLIC_KEY: ${{ secrets.SPARKLE_PUBLIC_KEY }}
+        run: |
+          cat > Secrets.xcconfig << XCCONFIG
+          GH_CLIENT_ID = ${GH_CLIENT_ID:-placeholder}
+          SPARKLE_PUBLIC_KEY = ${SPARKLE_PUBLIC_KEY:-placeholder}
+          XCCONFIG
 
       - name: Build
         run: |
