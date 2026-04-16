@@ -97,6 +97,9 @@
     "Automatically check for updates" : {
       "comment" : "Toggle for automatic update checking"
     },
+    "Build %@" : {
+
+    },
     "Build failures" : {
 
     },
@@ -117,6 +120,9 @@
     },
     "CI Status" : {
       "comment" : "Popover header title"
+    },
+    "Console" : {
+
     },
     "Copied!" : {
       "comment" : "Copy device code button after copying"
@@ -172,6 +178,9 @@
           }
         }
       }
+    },
+    "Filter copied!" : {
+
     },
     "Filter repositories..." : {
       "comment" : "Repository search field placeholder"
@@ -359,15 +368,8 @@
     "Updates" : {
       "comment" : "General settings section header for auto-updates"
     },
-    "Version %@ (%@)" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Version %1$@ (%2$@)"
-          }
-        }
-      }
+    "Version %@" : {
+
     },
     "Vigil-ant" : {
 
