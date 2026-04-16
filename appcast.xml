@@ -76,5 +76,17 @@
                 type="application/octet-stream"
                 sparkle:edSignature="nGm8RNSKazYE51BMWNxI7jd6QJtewPzjbLDSnRZXi89t9CMKy4NSBIWwAaoBv3S5iQ1hQoesQUhsSU68J+4fDQ==" />
         </item>
+        <item>
+            <title>Version 0.0.8</title>
+            <pubDate>Thu, 16 Apr 2026 08:18:56 +0000</pubDate>
+            <sparkle:version>12</sparkle:version>
+            <sparkle:shortVersionString>0.0.8</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shashank-shekhar/vigil-ant/releases/download/v0.0.8/Vigil-ant-0.0.8.zip"
+                length="2446816"
+                type="application/octet-stream"
+                sparkle:edSignature="4yCeUvOV7fhRUgO/HmJuGQTsdzL16I6uJwoaU7BMeM6Yjt7AyKE/ZIXiOBXHGZ3To2SIpqZ/AbKYoKkjmpCpDQ==" />
+        </item>
     </channel>
 </rss>
