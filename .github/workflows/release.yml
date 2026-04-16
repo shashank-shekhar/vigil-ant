@@ -57,12 +57,10 @@ jobs:
       - name: Set app version from tag
         env:
           VERSION: ${{ steps.version.outputs.version }}
+          BUILD_NUMBER: ${{ github.run_number }}
         run: |
-          # Extract major.minor.patch for MARKETING_VERSION and build number
           sed -i '' "s/MARKETING_VERSION = .*/MARKETING_VERSION = ${VERSION};/" \
             Vigilant/Vigilant.xcodeproj/project.pbxproj
-          # Use version components as build number (e.g., 0.0.2 → integer via date+run)
-          BUILD_NUMBER=$(date +%Y%m%d%H%M)
           sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};/" \
             Vigilant/Vigilant.xcodeproj/project.pbxproj
 
