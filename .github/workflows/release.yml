@@ -183,7 +183,10 @@ jobs:
           fi
 
           ZIP_FILE="build/Vigil-ant-${VERSION}.zip"
-          SIGNATURE=$(echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" "$ZIP_FILE" --ed-key-file -)
+          RAW_OUTPUT=$(echo "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" "$ZIP_FILE" --ed-key-file -)
+          # sign_update outputs: sparkle:edSignature="<sig>" length="<len>"
+          # Extract just the base64 signature value
+          SIGNATURE=$(echo "$RAW_OUTPUT" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
           echo "signature=${SIGNATURE}" >> "$GITHUB_OUTPUT"
         id: sparkle
 
