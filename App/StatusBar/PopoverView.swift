@@ -16,7 +16,7 @@ struct PopoverView: View {
     private var aggregator: StatusAggregator { appState.aggregator }
 
     private var showWelcome: Bool {
-        return appState.accounts.isEmpty && !appState.hasCompletedOnboarding
+        return appState.accounts.isEmpty
     }
 
     var body: some View {

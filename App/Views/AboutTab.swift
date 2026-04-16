@@ -22,6 +22,8 @@ struct AboutTab: View {
         Bundle.main.infoDictionary?["GIT_COMMIT_HASH"] as? String ?? ""
     }
 
+    private static let repoURL = "https://github.com/shashank-shekhar/vigil-ant"
+
     private var appName: String {
         Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String ?? "Vigil-ant"
     }
@@ -42,8 +44,21 @@ struct AboutTab: View {
                 Text("Version \(appVersion)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .underline()
+                    .onTapGesture {
+                        NSWorkspace.shared.open(
+                            URL(string: "\(Self.repoURL)/releases/tag/v\(appVersion)")!
+                        )
+                    }
+                    .onHover { hovering in
+                        if hovering {
+                            NSCursor.pointingHand.push()
+                        } else {
+                            NSCursor.pop()
+                        }
+                    }
 
-                Text("Build \(buildNumber)")
+                Text("Build #\(buildNumber)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
@@ -54,7 +69,7 @@ struct AboutTab: View {
                         .underline()
                         .onTapGesture {
                             NSWorkspace.shared.open(
-                                URL(string: "https://github.com/shashank-shekhar/vigil-ant/commit/\(commitHash)")!
+                                URL(string: "\(Self.repoURL)/commit/\(commitHash)")!
                             )
                         }
                         .onHover { hovering in
@@ -80,7 +95,7 @@ struct AboutTab: View {
 
             HStack(spacing: 12) {
                 Button("GitHub") {
-                    NSWorkspace.shared.open(URL(string: "https://github.com/shashank-shekhar/vigil-ant")!)
+                    NSWorkspace.shared.open(URL(string: Self.repoURL)!)
                 }
 
                 Button("Licenses") {
