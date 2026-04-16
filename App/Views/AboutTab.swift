@@ -79,6 +79,15 @@ struct AboutTab: View {
                 Button("Licenses") {
                     showingLicenses = true
                 }
+
+                Button("Logs") {
+                    let command = "log stream --predicate 'subsystem == \"net.shashankshekhar.vigilant\"' --level debug"
+                    let source = "tell application \"Terminal\"\nactivate\ndo script \"\(command)\"\nend tell"
+                    if let script = NSAppleScript(source: source) {
+                        var error: NSDictionary?
+                        script.executeAndReturnError(&error)
+                    }
+                }
             }
             .font(.subheadline)
 
