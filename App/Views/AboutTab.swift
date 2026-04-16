@@ -11,6 +11,10 @@ struct AboutTab: View {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
     }
 
+    private var commitHash: String {
+        Bundle.main.infoDictionary?["GIT_COMMIT_HASH"] as? String ?? ""
+    }
+
     private var appName: String {
         Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String ?? "Vigil-ant"
     }
@@ -27,9 +31,34 @@ struct AboutTab: View {
                 .font(.title)
                 .fontWeight(.semibold)
 
-            Text("Version \(appVersion) (\(buildNumber))")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+            VStack(spacing: 4) {
+                Text("Version \(appVersion)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Text("Build \(buildNumber)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                if !commitHash.isEmpty {
+                    Text(String(commitHash.prefix(7)))
+                        .font(.subheadline.monospaced())
+                        .foregroundStyle(.secondary)
+                        .underline()
+                        .onTapGesture {
+                            NSWorkspace.shared.open(
+                                URL(string: "https://github.com/shashank-shekhar/vigil-ant/commit/\(commitHash)")!
+                            )
+                        }
+                        .onHover { hovering in
+                            if hovering {
+                                NSCursor.pointingHand.push()
+                            } else {
+                                NSCursor.pop()
+                            }
+                        }
+                }
+            }
 
             Text("Monitor GitHub CI/CD build status from your menu bar")
                 .font(.subheadline)
