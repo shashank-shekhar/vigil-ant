@@ -52,5 +52,17 @@
                 type="application/octet-stream"
                 sparkle:edSignature="euHOkaaJ9DjFpkA+xVxSNlUF1AkMoIQHrG78YDWNeipzui73fbFiSkCBY9E+euVlYGIavfFcnYwfy1dLF8qyCw==" />
         </item>
+        <item>
+            <title>Version 0.0.6</title>
+            <pubDate>Thu, 16 Apr 2026 07:43:34 +0000</pubDate>
+            <sparkle:version>10</sparkle:version>
+            <sparkle:shortVersionString>0.0.6</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/shashank-shekhar/vigil-ant/releases/download/v0.0.6/Vigil-ant-0.0.6.zip"
+                length="2445538"
+                type="application/octet-stream"
+                sparkle:edSignature="krks53o3HdyeIrYVjy3y/04mFDP0GF10VIxsDaVsO4O1xgvMbfQpc6UhQay+UXohxUD4zaNE2oMWtgXwsiAgCQ==" />
+        </item>
     </channel>
 </rss>
