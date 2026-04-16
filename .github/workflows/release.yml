@@ -54,8 +54,21 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Set app version from tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Extract major.minor.patch for MARKETING_VERSION and build number
+          sed -i '' "s/MARKETING_VERSION = .*/MARKETING_VERSION = ${VERSION};/" \
+            Vigilant/Vigilant.xcodeproj/project.pbxproj
+          # Use version components as build number (e.g., 0.0.2 → integer via date+run)
+          BUILD_NUMBER=$(date +%Y%m%d%H%M)
+          sed -i '' "s/CURRENT_PROJECT_VERSION = .*/CURRENT_PROJECT_VERSION = ${BUILD_NUMBER};/" \
+            Vigilant/Vigilant.xcodeproj/project.pbxproj
+
       - name: Build release archive
         run: |
+          COMMIT_HASH=$(git rev-parse HEAD)
           xcodebuild archive \
             -project Vigilant/Vigilant.xcodeproj \
             -scheme Vigilant \
@@ -63,7 +76,8 @@ jobs:
             -archivePath build/Vigil-ant.xcarchive \
             CODE_SIGN_IDENTITY="Developer ID Application" \
             CODE_SIGN_STYLE=Manual \
-            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }}
+            DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }} \
+            GIT_COMMIT_HASH="$COMMIT_HASH"
 
       - name: Export app from archive
         env:
