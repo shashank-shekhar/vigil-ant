@@ -101,6 +101,7 @@ final class AppState {
     var selectedSettingsTab: SettingsTab = .accounts
 
     private var previousStatuses: [Int: BuildStatus.Status] = [:]
+    private var hasSeededPreviousStatuses = false
 
     var hasCompletedOnboarding: Bool = false {
         didSet { UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding") }
@@ -330,6 +331,15 @@ final class AppState {
     }
 
     func checkForNewFailures() {
+        // First check without a restored baseline seeds silently — prevents notification storm if cachedStatuses was wiped.
+        if !hasSeededPreviousStatuses {
+            for (repoID, entry) in aggregator.repoStatuses {
+                previousStatuses[repoID] = entry.status.status
+            }
+            hasSeededPreviousStatuses = true
+            return
+        }
+
         var newFailureCount = 0
 
         for (repoID, entry) in aggregator.repoStatuses {
@@ -485,10 +495,20 @@ final class AppState {
     }
 
     private func loadCachedStatuses() {
-        guard let data = UserDefaults.standard.data(forKey: "cachedStatuses"),
-              let cached = try? JSONDecoder().decode([CachedRepoStatus].self, from: data) else {
-            return
+        let data = UserDefaults.standard.data(forKey: "cachedStatuses")
+        let cached: [CachedRepoStatus]?
+        if let data {
+            cached = try? JSONDecoder().decode([CachedRepoStatus].self, from: data)
+            if cached == nil {
+                logger.warning("cachedStatuses decode failed — first poll will seed baseline without notifying")
+            }
+        } else {
+            cached = nil
+            if !repositories.isEmpty {
+                logger.warning("cachedStatuses missing despite \(self.repositories.count) configured repos — possible container reset; first poll will seed baseline without notifying")
+            }
         }
+        guard let cached, !cached.isEmpty else { return }
 
         let reposByID = Dictionary(uniqueKeysWithValues: repositories.map { ($0.id, $0) })
         let accountsByID = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
@@ -505,10 +525,9 @@ final class AppState {
         for (repoID, entry) in aggregator.repoStatuses {
             previousStatuses[repoID] = entry.status.status
         }
+        hasSeededPreviousStatuses = !previousStatuses.isEmpty
 
-        if !cached.isEmpty {
-            logger.info("Restored \(cached.count) cached status entries")
-        }
+        logger.info("Restored \(cached.count) cached status entries")
     }
 
     // MARK: - Data Schema Versioning
