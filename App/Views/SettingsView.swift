@@ -18,7 +18,7 @@ struct SettingsView: View {
                 .tabItem { Label("General", systemImage: "gearshape") }
                 .tag(AppState.SettingsTab.general)
 
-            AboutTab()
+            AboutTab(sparkleUpdater: sparkleUpdater)
                 .tabItem { Label("About", systemImage: "info.circle") }
                 .tag(AppState.SettingsTab.about)
         }
