@@ -20,7 +20,6 @@ Then run the app with:
 import argparse
 import json
 import re
-import socket
 import time
 from datetime import datetime, timezone, timedelta
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -418,11 +417,8 @@ def main():
     generate_mock_data(specs)
     print_summary()
 
-    class DualStackHTTPServer(HTTPServer):
-        address_family = socket.AF_INET6
-
-    server = DualStackHTTPServer(("", args.port), MockGitHubHandler)
-    print(f"\nListening on http://localhost:{args.port}")
+    server = HTTPServer(("127.0.0.1", args.port), MockGitHubHandler)
+    print(f"\nListening on http://127.0.0.1:{args.port} (loopback only)")
     print(f"Set GITHUB_BASE_URL=http://localhost:{args.port} in your Xcode scheme\n")
 
     try:

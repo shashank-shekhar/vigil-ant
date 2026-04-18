@@ -11,6 +11,7 @@ enum KeychainHelper {
             kSecAttrAccount as String: accountID.uuidString,
             kSecAttrService as String: oauthService,
             kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
 
         SecItemDelete(query as CFDictionary) // Remove existing if any
@@ -57,6 +58,7 @@ enum KeychainHelper {
             kSecAttrAccount as String: accountID.uuidString,
             kSecAttrService as String: refreshService,
             kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
         ]
         SecItemDelete(query as CFDictionary)
         let status = SecItemAdd(query as CFDictionary, nil)

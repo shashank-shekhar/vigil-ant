@@ -11,12 +11,16 @@ public actor GitHubAPIClient {
     public init(token: String, session: URLSession = .shared) {
         self.token = token
         self.session = session
+        #if DEBUG
         if let override = ProcessInfo.processInfo.environment["GITHUB_BASE_URL"],
            let url = URL(string: override) {
             self.baseURL = url
         } else {
             self.baseURL = URL(string: "https://api.github.com")!
         }
+        #else
+        self.baseURL = URL(string: "https://api.github.com")!
+        #endif
     }
 
     public func updateToken(_ newToken: String) {

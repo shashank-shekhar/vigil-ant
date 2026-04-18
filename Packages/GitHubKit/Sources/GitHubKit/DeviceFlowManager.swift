@@ -63,15 +63,19 @@ public struct DeviceFlowManager: Sendable {
 
     /// Base URL for OAuth endpoints (github.com in production).
     private static var authBaseURL: URL {
+        #if DEBUG
         if let override = ProcessInfo.processInfo.environment["GITHUB_BASE_URL"],
            let url = URL(string: override) { return url }
+        #endif
         return URL(string: "https://github.com")!
     }
 
     /// Base URL for API endpoints (api.github.com in production).
     private static var apiBaseURL: URL {
+        #if DEBUG
         if let override = ProcessInfo.processInfo.environment["GITHUB_BASE_URL"],
            let url = URL(string: override) { return url }
+        #endif
         return URL(string: "https://api.github.com")!
     }
 
@@ -87,8 +91,7 @@ public struct DeviceFlowManager: Sendable {
         request.httpBody = Self.formEncode(["client_id": clientID])
 
         let (data, httpResponse) = try await session.data(for: request)
-        let body = String(data: data, encoding: .utf8) ?? "nil"
-        logger.debug("requestDeviceCode status=\((httpResponse as? HTTPURLResponse)?.statusCode ?? 0) response: \(body, privacy: .public)")
+        logger.debug("requestDeviceCode status=\((httpResponse as? HTTPURLResponse)?.statusCode ?? 0)")
 
         // Check for error response from GitHub
         if let errorResponse = try? JSONDecoder().decode(GitHubErrorResponse.self, from: data),
@@ -102,10 +105,19 @@ public struct DeviceFlowManager: Sendable {
         }
 
         do {
-            return try JSONDecoder().decode(DeviceCode.self, from: data)
+            let decoded = try JSONDecoder().decode(DeviceCode.self, from: data)
+            #if !DEBUG
+            guard let host = decoded.verificationURI.host,
+                  host == "github.com" || host.hasSuffix(".github.com") else {
+                throw DeviceFlowError.requestFailed("Invalid verification URI host")
+            }
+            #endif
+            return decoded
+        } catch let error as DeviceFlowError {
+            throw error
         } catch {
-            logger.error("requestDeviceCode decode failed: \(error, privacy: .public) body: \(body, privacy: .public)")
-            throw DeviceFlowError.requestFailed("Unexpected response from GitHub: \(body.prefix(200))")
+            logger.error("requestDeviceCode decode failed: \(error.localizedDescription, privacy: .public)")
+            throw DeviceFlowError.requestFailed("Unexpected response from GitHub")
         }
     }
 
@@ -129,8 +141,8 @@ public struct DeviceFlowManager: Sendable {
             ])
 
             let (data, _) = try await session.data(for: request)
-            logger.debug("pollForToken response: \(String(data: data, encoding: .utf8) ?? "nil", privacy: .public)")
             let response = try JSONDecoder().decode(TokenPollResponse.self, from: data)
+            logger.debug("pollForToken error=\(response.error ?? "none", privacy: .public)")
 
             if let token = response.accessToken {
                 return TokenResponse(
@@ -202,9 +214,8 @@ public struct DeviceFlowManager: Sendable {
         ])
 
         let (data, _) = try await session.data(for: request)
-        logger.debug("refreshToken response: \(String(data: data, encoding: .utf8) ?? "nil", privacy: .public)")
-
         let response = try JSONDecoder().decode(TokenPollResponse.self, from: data)
+        logger.debug("refreshToken error=\(response.error ?? "none", privacy: .public)")
 
         guard let accessToken = response.accessToken else {
             throw DeviceFlowError.requestFailed(response.error ?? "Token refresh failed")
