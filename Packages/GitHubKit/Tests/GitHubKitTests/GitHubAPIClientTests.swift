@@ -185,6 +185,33 @@ func makeTestClient(token: String = "test-token") -> GitHubAPIClient {
         #expect(run?.conclusion == "success")
     }
 
+    @Test func etagAndResponseCachesEvictWhenAtCapacity() async throws {
+        // Every request returns a fresh 200 with a unique ETag so both caches grow on each call.
+        MockURLProtocol.requestHandler = { request in
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: 200,
+                httpVersion: nil,
+                headerFields: ["ETag": "\"etag-\(request.url!.path)\""]
+            )!
+            return (response, "{\"total_count\":0,\"workflow_runs\":[]}".data(using: .utf8)!)
+        }
+
+        let capacity = 5
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [MockURLProtocol.self]
+        let session = URLSession(configuration: config)
+        let client = GitHubAPIClient(token: "test-token", session: session, cacheCapacity: capacity)
+
+        // Exceed capacity by a comfortable margin.
+        for i in 0..<(capacity * 3) {
+            let _: WorkflowRunsResponse? = try await client.getWithETag("/repos/acme/api\(i)/actions/runs")
+        }
+
+        let counts = await client.cacheCountsForTesting
+        #expect(counts.etag == capacity)
+        #expect(counts.response == capacity)
+    }
+
     @Test func fetchCombinedStatus() async throws {
         MockURLProtocol.requestHandler = { request in
             let json = """
