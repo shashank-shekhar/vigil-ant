@@ -8,6 +8,13 @@ private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: 
 // MARK: - Cached Status Entry
 
 private struct CachedRepoStatus: Codable {
+    /// Current schema version for cached status entries. Bump when adding/removing
+    /// fields or changing the encoding of `statusRaw` / `sourceRaw`.
+    static let currentVersion = 1
+
+    /// Missing on pre-versioned entries; treat absence as `currentVersion` for
+    /// backward compat with data written before this field existed.
+    var version: Int?
     let repoID: Int
     let statusRaw: String
     let buildURL: URL?
@@ -16,6 +23,7 @@ private struct CachedRepoStatus: Codable {
     let duration: TimeInterval?
 
     init(repoID: Int, entry: RepoStatusEntry) {
+        self.version = Self.currentVersion
         self.repoID = repoID
         self.statusRaw = Self.encodeStatus(entry.status.status)
         self.buildURL = entry.status.buildURL
@@ -23,6 +31,9 @@ private struct CachedRepoStatus: Codable {
         self.sourceRaw = Self.encodeSource(entry.status.source)
         self.duration = entry.status.duration
     }
+
+    /// Effective version — untagged (pre-v1) entries are treated as v1.
+    var effectiveVersion: Int { version ?? Self.currentVersion }
 
     func toBuildStatus() -> BuildStatus? {
         guard let status = Self.decodeStatus(statusRaw),
@@ -197,13 +208,25 @@ final class AppState {
         restartPolling()
     }
 
-    func reAuthenticateAccount(_ account: Account, token: String, refreshToken: String?) {
-        // Save new token to Keychain
-        try? KeychainHelper.save(token: token, for: account.id)
-
-        // Save new refresh token if provided
+    func reAuthenticateAccount(_ account: Account, token: String, refreshToken: String?) throws {
+        // Save refresh token FIRST — it's rotated on each use, so the old one
+        // is invalidated server-side. If the access token save fails afterward,
+        // the refresh token is still valid for the next attempt.
         if let refreshToken {
-            try? KeychainHelper.saveRefreshToken(refreshToken, for: account.id)
+            do {
+                try KeychainHelper.saveRefreshToken(refreshToken, for: account.id)
+            } catch {
+                logger.error("Failed to save refresh token during re-auth for \(account.name): \(error)")
+                throw error
+            }
+        }
+
+        // Save new access token to Keychain
+        do {
+            try KeychainHelper.save(token: token, for: account.id)
+        } catch {
+            logger.error("Failed to save access token during re-auth for \(account.name): \(error)")
+            throw error
         }
 
         // Update the poller's client with the new token
@@ -239,36 +262,44 @@ final class AppState {
 
             do {
                 let repoResponses = try await client.fetchRepositories()
-                let batchSize = 10
-                for batchStart in stride(from: 0, to: repoResponses.count, by: batchSize) {
-                    let batch = repoResponses[batchStart..<min(batchStart + batchSize, repoResponses.count)]
-                    let batchResults: [Repository] = await withTaskGroup(of: Repository.self) { group in
-                        for resp in batch {
-                            group.addTask {
-                                let parts = resp.fullName.split(separator: "/")
-                                guard parts.count == 2 else {
-                                    return Repository(
-                                        id: resp.id, fullName: resp.fullName,
-                                        defaultBranch: resp.defaultBranch, isPrivate: resp.isPrivate,
-                                        hasWorkflows: false, accountID: account.id, pushedAt: resp.pushedAt
-                                    )
-                                }
-                                let has = (try? await client.fetchHasWorkflows(
-                                    owner: String(parts[0]), repo: String(parts[1])
-                                )) ?? false
+                // Cap in-flight workflow-check requests to avoid fan-out blasts.
+                // Uses a sliding window inside a single task group so a new request
+                // starts as soon as any earlier one finishes.
+                let maxInFlight = 15
+                let accountRepos: [Repository] = await withTaskGroup(of: Repository.self) { group in
+                    var iterator = repoResponses.makeIterator()
+                    var collected: [Repository] = []
+
+                    func submitNext() {
+                        guard let resp = iterator.next() else { return }
+                        group.addTask {
+                            let parts = resp.fullName.split(separator: "/")
+                            guard parts.count == 2 else {
                                 return Repository(
                                     id: resp.id, fullName: resp.fullName,
                                     defaultBranch: resp.defaultBranch, isPrivate: resp.isPrivate,
-                                    hasWorkflows: has, accountID: account.id, pushedAt: resp.pushedAt
+                                    hasWorkflows: false, accountID: account.id, pushedAt: resp.pushedAt
                                 )
                             }
+                            let has = (try? await client.fetchHasWorkflows(
+                                owner: String(parts[0]), repo: String(parts[1])
+                            )) ?? false
+                            return Repository(
+                                id: resp.id, fullName: resp.fullName,
+                                defaultBranch: resp.defaultBranch, isPrivate: resp.isPrivate,
+                                hasWorkflows: has, accountID: account.id, pushedAt: resp.pushedAt
+                            )
                         }
-                        var collected: [Repository] = []
-                        for await repo in group { collected.append(repo) }
-                        return collected
                     }
-                    allRepos.append(contentsOf: batchResults)
+
+                    for _ in 0..<min(maxInFlight, repoResponses.count) { submitNext() }
+                    while let repo = await group.next() {
+                        collected.append(repo)
+                        submitNext()
+                    }
+                    return collected
                 }
+                allRepos.append(contentsOf: accountRepos)
             } catch {
                 logger.warning("Failed to sync repos for \(account.name): \(error)")
             }
@@ -429,6 +460,8 @@ final class AppState {
                 }
             }
 
+            // Collect results off-main, then apply in a single MainActor hop at the end.
+            var pendingUpdates: [Int: Bool] = [:]
             for repo in reposToCheck {
                 guard let client = clients[repo.accountID] else { continue }
                 let parts = repo.fullName.split(separator: "/")
@@ -437,20 +470,23 @@ final class AppState {
                 // Only update on success; preserve existing value on failure
                 do {
                     let has = try await client.fetchHasWorkflows(owner: String(parts[0]), repo: String(parts[1]))
-                    await MainActor.run {
-                        if let idx = repositories.firstIndex(where: { $0.id == repo.id }),
-                           repositories[idx].hasWorkflows != has {
-                            repositories[idx].hasWorkflows = has
-                        }
-                    }
+                    pendingUpdates[repo.id] = has
                 } catch {
                     errorMessage = error.localizedDescription
                     logger.warning("Failed to check workflows for \(repo.fullName): \(error.localizedDescription)")
                 }
             }
 
+            let updates = pendingUpdates
+            let finalError = errorMessage
             await MainActor.run {
-                workflowCheckError = errorMessage
+                for (repoID, has) in updates {
+                    if let idx = repositories.firstIndex(where: { $0.id == repoID }),
+                       repositories[idx].hasWorkflows != has {
+                        repositories[idx].hasWorkflows = has
+                    }
+                }
+                workflowCheckError = finalError
             }
         }
     }
@@ -496,19 +532,35 @@ final class AppState {
 
     private func loadCachedStatuses() {
         let data = UserDefaults.standard.data(forKey: "cachedStatuses")
-        let cached: [CachedRepoStatus]?
+        var cached: [CachedRepoStatus] = []
         if let data {
-            cached = try? JSONDecoder().decode([CachedRepoStatus].self, from: data)
-            if cached == nil {
+            // Decode each entry individually so a single corrupt or future-versioned
+            // entry doesn't nuke the whole cache.
+            if let rawArray = try? JSONSerialization.jsonObject(with: data) as? [Any] {
+                let decoder = JSONDecoder()
+                var dropped = 0
+                for raw in rawArray {
+                    guard let entryData = try? JSONSerialization.data(withJSONObject: raw),
+                          let entry = try? decoder.decode(CachedRepoStatus.self, from: entryData) else {
+                        dropped += 1
+                        continue
+                    }
+                    guard entry.effectiveVersion == CachedRepoStatus.currentVersion else {
+                        dropped += 1
+                        continue
+                    }
+                    cached.append(entry)
+                }
+                if dropped > 0 {
+                    logger.warning("Dropped \(dropped) cached status entries with incompatible version or corrupt data")
+                }
+            } else {
                 logger.warning("cachedStatuses decode failed — first poll will seed baseline without notifying")
             }
-        } else {
-            cached = nil
-            if !repositories.isEmpty {
-                logger.warning("cachedStatuses missing despite \(self.repositories.count) configured repos — possible container reset; first poll will seed baseline without notifying")
-            }
+        } else if !repositories.isEmpty {
+            logger.warning("cachedStatuses missing despite \(self.repositories.count) configured repos — possible container reset; first poll will seed baseline without notifying")
         }
-        guard let cached, !cached.isEmpty else { return }
+        guard !cached.isEmpty else { return }
 
         let reposByID = Dictionary(uniqueKeysWithValues: repositories.map { ($0.id, $0) })
         let accountsByID = Dictionary(uniqueKeysWithValues: accounts.map { ($0.id, $0) })
