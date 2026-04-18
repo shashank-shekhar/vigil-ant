@@ -167,6 +167,11 @@ final class AppState {
         }
     }
 
+    /// Cancel the polling task. Best-effort cleanup for app termination.
+    func stopPolling() async {
+        await poller.stopPolling()
+    }
+
     func refreshNow() async {
         guard networkMonitor.isConnected else {
             logger.info("Skipping refresh — offline")

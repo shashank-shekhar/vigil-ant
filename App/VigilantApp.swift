@@ -53,4 +53,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func togglePopover() {
         statusBarController.togglePopover()
     }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        // Best-effort cancellation of in-flight polling so pending requests
+        // don't log errors as the process is torn down.
+        let semaphore = DispatchSemaphore(value: 0)
+        Task { @MainActor in
+            await appState.stopPolling()
+            semaphore.signal()
+        }
+        _ = semaphore.wait(timeout: .now() + 0.5)
+    }
 }
