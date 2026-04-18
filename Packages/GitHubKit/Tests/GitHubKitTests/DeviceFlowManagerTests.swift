@@ -214,6 +214,51 @@ struct DeviceFlowManagerTests {
         #expect(response.expiresIn == 28800)
     }
 
+    @Test func requestDeviceCodeRetriesOn5xx() async throws {
+        var callCount = 0
+        MockProtocol.handler = { request in
+            callCount += 1
+            if callCount < 2 {
+                let data = Data()
+                let response = HTTPURLResponse(url: request.url!, statusCode: 503, httpVersion: nil, headerFields: nil)!
+                return (data, response)
+            }
+            let json = """
+            {
+                "device_code": "retry-ok",
+                "user_code": "R-ETRY",
+                "verification_uri": "https://github.com/login/device",
+                "expires_in": 899,
+                "interval": 0
+            }
+            """
+            let data = json.data(using: .utf8)!
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (data, response)
+        }
+
+        let manager = DeviceFlowManager(clientID: "test-client-id")
+        let code = try await manager.requestDeviceCode(session: mockSession())
+        #expect(code.deviceCode == "retry-ok")
+        #expect(callCount == 2)
+    }
+
+    @Test func fetchUserDoesNotRetryOn4xx() async throws {
+        var callCount = 0
+        MockProtocol.handler = { request in
+            callCount += 1
+            let data = Data()
+            let response = HTTPURLResponse(url: request.url!, statusCode: 401, httpVersion: nil, headerFields: nil)!
+            return (data, response)
+        }
+
+        let manager = DeviceFlowManager(clientID: "test-client-id")
+        await #expect(throws: DeviceFlowError.self) {
+            _ = try await manager.fetchUser(token: "bad-token", session: mockSession())
+        }
+        #expect(callCount == 1)
+    }
+
     @Test func refreshTokenThrowsOnError() async throws {
         MockProtocol.handler = { request in
             let json = """
