@@ -5,81 +5,6 @@ import os
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "AppState")
 
-// MARK: - Cached Status Entry
-
-private struct CachedRepoStatus: Codable {
-    /// Current schema version for cached status entries. Bump when adding/removing
-    /// fields or changing the encoding of `statusRaw` / `sourceRaw`.
-    static let currentVersion = 1
-
-    /// Missing on pre-versioned entries; treat absence as `currentVersion` for
-    /// backward compat with data written before this field existed.
-    var version: Int?
-    let repoID: Int
-    let statusRaw: String
-    let buildURL: URL?
-    let updatedAt: Date
-    let sourceRaw: String
-    let duration: TimeInterval?
-
-    init(repoID: Int, entry: RepoStatusEntry) {
-        self.version = Self.currentVersion
-        self.repoID = repoID
-        self.statusRaw = Self.encodeStatus(entry.status.status)
-        self.buildURL = entry.status.buildURL
-        self.updatedAt = entry.status.updatedAt
-        self.sourceRaw = Self.encodeSource(entry.status.source)
-        self.duration = entry.status.duration
-    }
-
-    /// Effective version — untagged (pre-v1) entries are treated as v1.
-    var effectiveVersion: Int { version ?? Self.currentVersion }
-
-    func toBuildStatus() -> BuildStatus? {
-        guard let status = Self.decodeStatus(statusRaw),
-              let source = Self.decodeSource(sourceRaw) else { return nil }
-        return BuildStatus(status: status, buildURL: buildURL, updatedAt: updatedAt, source: source, duration: duration)
-    }
-
-    private static func encodeStatus(_ status: BuildStatus.Status) -> String {
-        switch status {
-        case .unknown: "unknown"
-        case .success: "success"
-        case .building: "building"
-        case .pending: "pending"
-        case .failure: "failure"
-        }
-    }
-
-    private static func decodeStatus(_ raw: String) -> BuildStatus.Status? {
-        switch raw {
-        case "unknown": .unknown
-        case "success": .success
-        case "building": .building
-        case "pending": .pending
-        case "failure": .failure
-        default: nil
-        }
-    }
-
-    private static func encodeSource(_ source: BuildStatus.Source) -> String {
-        switch source {
-        case .actions: "actions"
-        case .commitStatus: "commitStatus"
-        case .combined: "combined"
-        }
-    }
-
-    private static func decodeSource(_ raw: String) -> BuildStatus.Source? {
-        switch raw {
-        case "actions": .actions
-        case "commitStatus": .commitStatus
-        case "combined": .combined
-        default: nil
-        }
-    }
-}
-
 @Observable
 @MainActor
 final class AppState {
@@ -523,7 +448,7 @@ final class AppState {
 
     private func saveCachedStatuses() {
         let cached = aggregator.repoStatuses.map { (repoID, entry) in
-            CachedRepoStatus(repoID: repoID, entry: entry)
+            CachedRepoStatus(repoID: repoID, status: entry.status)
         }
         if let data = try? JSONEncoder().encode(cached) {
             UserDefaults.standard.set(data, forKey: "cachedStatuses")
@@ -532,32 +457,14 @@ final class AppState {
 
     private func loadCachedStatuses() {
         let data = UserDefaults.standard.data(forKey: "cachedStatuses")
-        var cached: [CachedRepoStatus] = []
-        if let data {
-            // Decode each entry individually so a single corrupt or future-versioned
-            // entry doesn't nuke the whole cache.
-            if let rawArray = try? JSONSerialization.jsonObject(with: data) as? [Any] {
-                let decoder = JSONDecoder()
-                var dropped = 0
-                for raw in rawArray {
-                    guard let entryData = try? JSONSerialization.data(withJSONObject: raw),
-                          let entry = try? decoder.decode(CachedRepoStatus.self, from: entryData) else {
-                        dropped += 1
-                        continue
-                    }
-                    guard entry.effectiveVersion == CachedRepoStatus.currentVersion else {
-                        dropped += 1
-                        continue
-                    }
-                    cached.append(entry)
-                }
-                if dropped > 0 {
-                    logger.warning("Dropped \(dropped) cached status entries with incompatible version or corrupt data")
-                }
-            } else {
-                logger.warning("cachedStatuses decode failed — first poll will seed baseline without notifying")
-            }
-        } else if !repositories.isEmpty {
+        let result = CachedStatusStore.decode(data)
+        let cached = result.entries
+        if result.blobCorrupt {
+            logger.warning("cachedStatuses decode failed — first poll will seed baseline without notifying")
+        } else if result.droppedCount > 0 {
+            logger.warning("Dropped \(result.droppedCount) cached status entries with incompatible version or corrupt data")
+        }
+        if data == nil && !repositories.isEmpty {
             logger.warning("cachedStatuses missing despite \(self.repositories.count) configured repos — possible container reset; first poll will seed baseline without notifying")
         }
         guard !cached.isEmpty else { return }
