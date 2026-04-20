@@ -138,6 +138,14 @@ final class AppState {
         return Date().timeIntervalSince(lastUpdated) > 2 * pollIntervalSeconds
     }
 
+    var hasMonitoredRepos: Bool {
+        repositories.contains { $0.isMonitored }
+    }
+
+    var hasPollableRepos: Bool {
+        repositories.contains { $0.isMonitored && $0.hasWorkflows }
+    }
+
     /// Optional callback fired when a repo transitions to or from failure.
     var onStatusChange: ((Int, StatusChangeEvent) -> Void)?
 
@@ -197,9 +205,8 @@ final class AppState {
 
         // Re-check workflow flags: immediately if none have workflows (broken state),
         // otherwise periodically every 5 poll cycles to pick up changes.
-        let hasAnyWorkflowRepos = repositories.contains { $0.isMonitored && $0.hasWorkflows }
         pollCyclesSinceWorkflowRefresh += 1
-        if !hasAnyWorkflowRepos || pollCyclesSinceWorkflowRefresh >= 5 {
+        if !hasPollableRepos || pollCyclesSinceWorkflowRefresh >= 5 {
             pollCyclesSinceWorkflowRefresh = 0
             refreshWorkflowFlags()
         }
@@ -278,8 +285,7 @@ final class AppState {
                     func submitNext() {
                         guard let resp = iterator.next() else { return }
                         group.addTask {
-                            let parts = resp.fullName.split(separator: "/")
-                            guard parts.count == 2 else {
+                            guard let (owner, name) = resp.ownerAndName else {
                                 return Repository(
                                     id: resp.id, fullName: resp.fullName,
                                     defaultBranch: resp.defaultBranch, isPrivate: resp.isPrivate,
@@ -287,7 +293,7 @@ final class AppState {
                                 )
                             }
                             let has = (try? await client.fetchHasWorkflows(
-                                owner: String(parts[0]), repo: String(parts[1])
+                                owner: owner, repo: name
                             )) ?? false
                             return Repository(
                                 id: resp.id, fullName: resp.fullName,
@@ -469,12 +475,11 @@ final class AppState {
             var pendingUpdates: [Int: Bool] = [:]
             for repo in reposToCheck {
                 guard let client = clients[repo.accountID] else { continue }
-                let parts = repo.fullName.split(separator: "/")
-                guard parts.count == 2 else { continue }
+                guard let (owner, name) = repo.ownerAndName else { continue }
 
                 // Only update on success; preserve existing value on failure
                 do {
-                    let has = try await client.fetchHasWorkflows(owner: String(parts[0]), repo: String(parts[1]))
+                    let has = try await client.fetchHasWorkflows(owner: owner, repo: name)
                     pendingUpdates[repo.id] = has
                 } catch {
                     errorMessage = error.localizedDescription

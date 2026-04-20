@@ -256,9 +256,9 @@ public actor StatusPoller {
             return BuildStatus(status: .unknown, buildURL: nil, updatedAt: .distantPast, source: .combined)
         }
 
-        let parts = repo.fullName.split(separator: "/")
-        let owner = String(parts[0])
-        let repoName = String(parts[1])
+        guard let (owner, repoName) = repo.ownerAndName else {
+            return BuildStatus(status: .unknown, buildURL: nil, updatedAt: .distantPast, source: .combined)
+        }
 
         // Fetch both concurrently but independently — one failing shouldn't cancel the other.
         // Auth (401) and rate limit errors are rethrown so the caller can report them.

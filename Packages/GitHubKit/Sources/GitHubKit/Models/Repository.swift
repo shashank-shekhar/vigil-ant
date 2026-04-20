@@ -29,4 +29,14 @@ public struct Repository: Identifiable, Codable, Hashable, Sendable {
         self.accountID = accountID
         self.pushedAt = pushedAt
     }
+
+    public var ownerAndName: (owner: String, name: String)? {
+        Self.parseOwnerAndName(from: fullName)
+    }
+
+    static func parseOwnerAndName(from fullName: String) -> (owner: String, name: String)? {
+        let parts = fullName.split(separator: "/")
+        guard parts.count == 2 else { return nil }
+        return (String(parts[0]), String(parts[1]))
+    }
 }

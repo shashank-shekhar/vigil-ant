@@ -17,35 +17,44 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func notifyBuildFailure(repo: Repository, buildURL: URL?) {
-        guard UserDefaults.standard.bool(forKey: "showNotifications"),
-              UserDefaults.standard.bool(forKey: "notifyOnFailure") else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Build Failed"
-        content.body = "\(repo.fullName) on \(repo.defaultBranch)"
-        content.sound = .default
-        if UserDefaults.standard.bool(forKey: "notifyGrouping") {
-            content.threadIdentifier = "build-status"
-        }
-        if let url = buildURL {
-            content.userInfo = ["url": url.absoluteString]
-        }
-
-        let request = UNNotificationRequest(
-            identifier: "build-failure-\(repo.id)",
-            content: content,
-            trigger: nil
+        guard shouldNotify(for: "notifyOnFailure") else { return }
+        let content = makeContent(
+            title: "Build Failed",
+            body: "\(repo.fullName) on \(repo.defaultBranch)",
+            buildURL: buildURL
         )
-        UNUserNotificationCenter.current().add(request)
+        add(content, identifier: "build-failure-\(repo.id)")
     }
 
     func notifyBuildFixed(repo: Repository, buildURL: URL?) {
-        guard UserDefaults.standard.bool(forKey: "showNotifications"),
-              UserDefaults.standard.bool(forKey: "notifyOnFixed") else { return }
+        guard shouldNotify(for: "notifyOnFixed") else { return }
+        let content = makeContent(
+            title: "Build Fixed",
+            body: "\(repo.fullName) on \(repo.defaultBranch)",
+            buildURL: buildURL
+        )
+        add(content, identifier: "build-fixed-\(repo.id)")
+    }
 
+    func notifyMultipleFailures(count: Int) {
+        guard shouldNotify(for: "notifyOnFailure") else { return }
+        let content = makeContent(
+            title: "Multiple Build Failures",
+            body: "\(count) repos failing",
+            buildURL: nil
+        )
+        add(content, identifier: "build-failure-summary")
+    }
+
+    private func shouldNotify(for preferenceKey: String) -> Bool {
+        UserDefaults.standard.bool(forKey: "showNotifications")
+            && UserDefaults.standard.bool(forKey: preferenceKey)
+    }
+
+    private func makeContent(title: String, body: String, buildURL: URL?) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
-        content.title = "Build Fixed"
-        content.body = "\(repo.fullName) on \(repo.defaultBranch)"
+        content.title = title
+        content.body = body
         content.sound = .default
         if UserDefaults.standard.bool(forKey: "notifyGrouping") {
             content.threadIdentifier = "build-status"
@@ -53,32 +62,11 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         if let url = buildURL {
             content.userInfo = ["url": url.absoluteString]
         }
-
-        let request = UNNotificationRequest(
-            identifier: "build-fixed-\(repo.id)",
-            content: content,
-            trigger: nil
-        )
-        UNUserNotificationCenter.current().add(request)
+        return content
     }
 
-    func notifyMultipleFailures(count: Int) {
-        guard UserDefaults.standard.bool(forKey: "showNotifications"),
-              UserDefaults.standard.bool(forKey: "notifyOnFailure") else { return }
-
-        let content = UNMutableNotificationContent()
-        content.title = "Multiple Build Failures"
-        content.body = "\(count) repos failing"
-        content.sound = .default
-        if UserDefaults.standard.bool(forKey: "notifyGrouping") {
-            content.threadIdentifier = "build-status"
-        }
-
-        let request = UNNotificationRequest(
-            identifier: "build-failure-summary",
-            content: content,
-            trigger: nil
-        )
+    private func add(_ content: UNMutableNotificationContent, identifier: String) {
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
 
