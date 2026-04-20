@@ -153,13 +153,10 @@ struct PopoverView: View {
 
     /// Returns which settings tab the footer should link to, or nil if Refresh should be shown.
     private var footerSettingsTab: AppState.SettingsTab? {
-        if appState.accounts.isEmpty {
+        if appState.accounts.isEmpty || !aggregator.authFailedAccountIDs.isEmpty {
             return .accounts
-        } else if !aggregator.authFailedAccountIDs.isEmpty {
-            return .accounts
-        } else if appState.repositories.filter({ $0.isMonitored }).isEmpty {
-            return .repositories
-        } else if appState.repositories.filter({ $0.isMonitored && $0.hasWorkflows }).isEmpty {
+        }
+        if !appState.hasPollableRepos {
             return .repositories
         }
         return nil
@@ -175,11 +172,11 @@ struct PopoverView: View {
             Text("Offline")
                 .font(.system(size: 11))
                 .foregroundStyle(.orange)
-        } else if appState.repositories.filter({ $0.isMonitored }).isEmpty {
+        } else if !appState.hasMonitoredRepos {
             Text("No repositories selected")
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
-        } else if appState.repositories.filter({ $0.isMonitored && $0.hasWorkflows }).isEmpty {
+        } else if !appState.hasPollableRepos {
             if let error = appState.workflowCheckError {
                 Text(error)
                     .font(.system(size: 11))

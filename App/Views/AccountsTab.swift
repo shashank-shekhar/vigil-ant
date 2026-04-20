@@ -372,10 +372,18 @@ struct AccountsTab: View {
                     let batchResults: [Repository] = await withTaskGroup(of: Repository.self) { group in
                         for resp in batch {
                             group.addTask {
-                                let parts = resp.fullName.split(separator: "/")
-                                let owner = String(parts[0])
-                                let repoName = String(parts[1])
-                                let has = (try? await client.fetchHasWorkflows(owner: owner, repo: repoName)) ?? false
+                                guard let (owner, name) = resp.ownerAndName else {
+                                    return Repository(
+                                        id: resp.id,
+                                        fullName: resp.fullName,
+                                        defaultBranch: resp.defaultBranch,
+                                        isPrivate: resp.isPrivate,
+                                        hasWorkflows: false,
+                                        accountID: account.id,
+                                        pushedAt: resp.pushedAt
+                                    )
+                                }
+                                let has = (try? await client.fetchHasWorkflows(owner: owner, repo: name)) ?? false
                                 return Repository(
                                     id: resp.id,
                                     fullName: resp.fullName,

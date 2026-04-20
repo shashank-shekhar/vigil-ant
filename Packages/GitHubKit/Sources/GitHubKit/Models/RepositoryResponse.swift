@@ -16,4 +16,8 @@ public struct RepositoryResponse: Codable, Sendable {
         case isPrivate = "private"
         case pushedAt
     }
+
+    public var ownerAndName: (owner: String, name: String)? {
+        Repository.parseOwnerAndName(from: fullName)
+    }
 }

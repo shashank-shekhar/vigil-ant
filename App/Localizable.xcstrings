@@ -121,11 +121,14 @@
     "CI Status" : {
       "comment" : "Popover header title"
     },
-    "Console" : {
-
-    },
     "Copied!" : {
       "comment" : "Copy device code button after copying"
+    },
+    "Copies a subsystem filter to your clipboard — paste it into Console's search field." : {
+
+    },
+    "Copies this session's logs to your clipboard." : {
+
     },
     "Copy" : {
       "comment" : "Copy device code button"
@@ -135,6 +138,9 @@
     },
     "Deselect All" : {
       "comment" : "Deselect all repos button in section header"
+    },
+    "Diagnostics" : {
+
     },
     "Discard Repositories" : {
       "comment" : "Confirmation dialog option to delete repos when removing account"
@@ -261,6 +267,9 @@
 
     },
     "Offline" : {
+
+    },
+    "Open Console" : {
 
     },
     "Open GitHub" : {
