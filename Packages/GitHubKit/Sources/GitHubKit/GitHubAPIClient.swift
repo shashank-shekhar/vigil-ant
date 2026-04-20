@@ -4,13 +4,23 @@ public actor GitHubAPIClient {
     private var token: String
     private let session: URLSession
     private let baseURL: URL
-    private var etagCache: [String: String] = [:]
-    private var responseCache: [String: Data] = [:]
+    private var etagCache: LRUCache<String, String>
+    private var responseCache: LRUCache<String, Data>
     private var rateLimitResetDate: Date?
 
+    /// Default cap for per-endpoint cache entries. Keeps memory bounded over long sessions
+    /// while staying well above any realistic active repo count.
+    static let defaultCacheCapacity = 100
+
     public init(token: String, session: URLSession = .shared) {
+        self.init(token: token, session: session, cacheCapacity: Self.defaultCacheCapacity)
+    }
+
+    init(token: String, session: URLSession = .shared, cacheCapacity: Int) {
         self.token = token
         self.session = session
+        self.etagCache = LRUCache(capacity: cacheCapacity)
+        self.responseCache = LRUCache(capacity: cacheCapacity)
         #if DEBUG
         if let override = ProcessInfo.processInfo.environment["GITHUB_BASE_URL"],
            let url = URL(string: override) {
@@ -27,6 +37,11 @@ public actor GitHubAPIClient {
         token = newToken
         etagCache.removeAll()
         responseCache.removeAll()
+    }
+
+    // Test-only snapshot of cache occupancy.
+    internal var cacheCountsForTesting: (etag: Int, response: Int) {
+        (etagCache.count, responseCache.count)
     }
 
     public func get<T: Decodable & Sendable>(_ path: String) async throws -> T {
@@ -54,7 +69,7 @@ public actor GitHubAPIClient {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
-        if let etag = etagCache[path] {
+        if let etag = etagCache.get(path) {
             request.setValue(etag, forHTTPHeaderField: "If-None-Match")
         }
 
@@ -62,21 +77,21 @@ public actor GitHubAPIClient {
 
         if httpResponse.statusCode == 304 {
             // Data hasn't changed — return the cached response
-            if let cached = responseCache[path] {
+            if let cached = responseCache.get(path) {
                 return try Self.decoder.decode(T.self, from: cached)
             }
             return nil
         }
 
         if let etag = httpResponse.value(forHTTPHeaderField: "ETag") {
-            etagCache[path] = etag
+            etagCache.set(path, etag)
         }
 
         guard (200...299).contains(httpResponse.statusCode) else {
             throw GitHubAPIError.httpError(statusCode: httpResponse.statusCode)
         }
 
-        responseCache[path] = data
+        responseCache.set(path, data)
         return try Self.decoder.decode(T.self, from: data)
     }
 
@@ -256,5 +271,57 @@ public enum GitHubAPIError: Error, LocalizedError, Sendable {
     public var isNotFound: Bool {
         if case .httpError(statusCode: 404) = self { return true }
         return false
+    }
+}
+
+// MARK: - LRU Cache
+
+/// Small LRU cache used to bound the per-endpoint ETag and response dictionaries on
+/// `GitHubAPIClient`. On insert when at capacity, the least-recently-used entry is evicted.
+/// Reads and writes both mark an entry as most-recently-used.
+struct LRUCache<Key: Hashable, Value> {
+    private let capacity: Int
+    private var storage: [Key: Value] = [:]
+    // Front of the array is least-recently-used; back is most-recently-used.
+    // Fine for ~100 entries; no need for a linked list.
+    private var order: [Key] = []
+
+    init(capacity: Int) {
+        precondition(capacity > 0, "LRUCache capacity must be positive")
+        self.capacity = capacity
+    }
+
+    var count: Int { storage.count }
+
+    mutating func get(_ key: Key) -> Value? {
+        guard let value = storage[key] else { return nil }
+        touch(key)
+        return value
+    }
+
+    mutating func set(_ key: Key, _ value: Value) {
+        if storage[key] != nil {
+            storage[key] = value
+            touch(key)
+            return
+        }
+        if storage.count >= capacity, let oldest = order.first {
+            storage.removeValue(forKey: oldest)
+            order.removeFirst()
+        }
+        storage[key] = value
+        order.append(key)
+    }
+
+    mutating func removeAll() {
+        storage.removeAll()
+        order.removeAll()
+    }
+
+    private mutating func touch(_ key: Key) {
+        if let idx = order.firstIndex(of: key) {
+            order.remove(at: idx)
+        }
+        order.append(key)
     }
 }
