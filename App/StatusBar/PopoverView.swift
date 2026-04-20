@@ -74,16 +74,21 @@ struct PopoverView: View {
                 }
 
                 // Repo list
+                let missingRepoIDs: Set<Int> = Set(appState.repositories.filter(\.isMissing).map(\.id))
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(aggregator.sortedAccounts(), id: \.id) { account in
                             let entries = aggregator.sortedEntries(for: account.id)
-                                .filter { $0.status.status != .unknown || $0.repo.hasWorkflows || aggregator.notFoundRepoIDs.contains($0.repo.id) }
+                                .filter { $0.status.status != .unknown || $0.repo.hasWorkflows || aggregator.notFoundRepoIDs.contains($0.repo.id) || missingRepoIDs.contains($0.repo.id) }
                             if !entries.isEmpty {
                                 AccountSectionView(
                                     account: account,
                                     entries: entries,
-                                    notFoundRepoIDs: aggregator.notFoundRepoIDs
+                                    notFoundRepoIDs: aggregator.notFoundRepoIDs,
+                                    missingRepoIDs: missingRepoIDs,
+                                    onRemoveMissing: { repo in
+                                        appState.removeMissingRepo(repo)
+                                    }
                                 )
                             }
                         }

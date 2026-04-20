@@ -108,3 +108,134 @@ private actor PollerTokenState {
     let retries = await log.calls.filter { $0.attempt > 1 }
     #expect(!retries.isEmpty, "at least one repo should have been retried post-refresh")
 }
+
+// MARK: - 404 handling (deleted / transferred repos)
+
+/// A 404 from a repo fetch should be reported in `PollResult.notFoundRepoIDs`
+/// so AppState can track repeated 404s and flip the repo to `isMissing`.
+/// Successful fetches should land in `successfulRepoIDs` so AppState can
+/// reset streak counters.
+@MainActor
+@Test func pollerReportsNotFoundAndSuccessInPollResult() async throws {
+    let aggregator = StatusAggregator()
+    let account = Account(name: "Work", username: "work", iconSymbol: "icon-rocket")
+    let liveRepo = Repository(id: 1, fullName: "acme/alive", defaultBranch: "main", isPrivate: false, isMonitored: true, hasWorkflows: true, accountID: account.id)
+    let deletedRepo = Repository(id: 2, fullName: "acme/gone", defaultBranch: "main", isPrivate: false, isMonitored: true, hasWorkflows: true, accountID: account.id)
+
+    let fetcher: StatusPoller.RepoFetcher = { _, repo in
+        if repo.id == deletedRepo.id {
+            throw GitHubAPIError.httpError(statusCode: 404)
+        }
+        return BuildStatus(status: .success, buildURL: nil, updatedAt: Date(), source: .actions)
+    }
+
+    let poller = StatusPoller(aggregator: aggregator, fetcher: fetcher)
+    let result = await poller.pollOnce(accounts: [(account, [liveRepo, deletedRepo])])
+
+    #expect(result.notFoundRepoIDs == [deletedRepo.id])
+    #expect(result.successfulRepoIDs == [liveRepo.id])
+    #expect(aggregator.notFoundRepoIDs == [deletedRepo.id])
+}
+
+/// A 404 must NOT trigger a token refresh — 404 means the repo is gone,
+/// not that the token is bad. Only 401 should route through the refresher.
+@MainActor
+@Test func pollerDoesNotRefreshTokenOn404() async throws {
+    let aggregator = StatusAggregator()
+    let refreshes = PollerRefreshCounter()
+
+    let fetcher: StatusPoller.RepoFetcher = { _, _ in
+        throw GitHubAPIError.httpError(statusCode: 404)
+    }
+
+    let account = Account(name: "Work", username: "work", iconSymbol: "icon-rocket")
+    let repo = Repository(id: 42, fullName: "acme/gone", defaultBranch: "main", isPrivate: false, isMonitored: true, hasWorkflows: true, accountID: account.id)
+
+    let poller = StatusPoller(aggregator: aggregator, fetcher: fetcher)
+    await poller.setTokenRefresher { _ in
+        await refreshes.tick()
+        return true
+    }
+
+    _ = await poller.pollOnce(accounts: [(account, [repo])])
+
+    #expect(await refreshes.count == 0, "404s must not trigger token refresh")
+    #expect(aggregator.notFoundRepoIDs == [repo.id])
+}
+
+/// Simulates the AppState-side counter logic against real `PollResult`
+/// values over multiple poll cycles: repeated 404s should accumulate past
+/// the threshold, while any successful fetch in between resets the streak.
+/// Keeps the test in the poller layer by inlining the counter logic.
+@MainActor
+@Test func consecutive404sAccumulateAndResetOnSuccess() async throws {
+    let aggregator = StatusAggregator()
+    let account = Account(name: "Work", username: "work", iconSymbol: "icon-rocket")
+    let repo = Repository(id: 7, fullName: "acme/flaky", defaultBranch: "main", isPrivate: false, isMonitored: true, hasWorkflows: true, accountID: account.id)
+
+    // Deterministic sequence of per-cycle outcomes: three 404s → then a success.
+    let outcomes = ActorBool(values: [false, false, false, true])
+    let fetcher: StatusPoller.RepoFetcher = { _, _ in
+        let succeed = await outcomes.next()
+        if succeed {
+            return BuildStatus(status: .success, buildURL: nil, updatedAt: Date(), source: .actions)
+        }
+        throw GitHubAPIError.httpError(statusCode: 404)
+    }
+
+    let poller = StatusPoller(aggregator: aggregator, fetcher: fetcher)
+
+    // Mirror AppState's counter logic locally; threshold of 3.
+    var streaks: [Int: Int] = [:]
+    var isMissing = false
+    let threshold = 3
+
+    func applyResult(_ r: PollResult) {
+        for id in r.successfulRepoIDs {
+            streaks.removeValue(forKey: id)
+            if id == repo.id { isMissing = false }
+        }
+        for id in r.notFoundRepoIDs {
+            let n = (streaks[id] ?? 0) + 1
+            streaks[id] = n
+            if n >= threshold, id == repo.id { isMissing = true }
+        }
+    }
+
+    // Cycle 1: 404 — counter = 1, not yet missing.
+    applyResult(await poller.pollOnce(accounts: [(account, [repo])]))
+    #expect(streaks[repo.id] == 1)
+    #expect(!isMissing)
+
+    // Cycle 2: 404 — counter = 2, not yet missing.
+    applyResult(await poller.pollOnce(accounts: [(account, [repo])]))
+    #expect(streaks[repo.id] == 2)
+    #expect(!isMissing)
+
+    // Cycle 3: 404 — counter = 3, flips to missing.
+    applyResult(await poller.pollOnce(accounts: [(account, [repo])]))
+    #expect(streaks[repo.id] == 3)
+    #expect(isMissing)
+
+    // Cycle 4: success — counter resets and missing clears.
+    applyResult(await poller.pollOnce(accounts: [(account, [repo])]))
+    #expect(streaks[repo.id] == nil)
+    #expect(!isMissing)
+}
+
+/// Drains a scripted sequence of boolean outcomes; re-uses the last value
+/// once the script runs out so long tests don't need to pad.
+private actor ActorBool {
+    private var values: [Bool]
+    private var last: Bool
+    init(values: [Bool]) {
+        self.values = values
+        self.last = values.last ?? false
+    }
+    func next() -> Bool {
+        if values.isEmpty { return last }
+        let v = values.removeFirst()
+        last = v
+        return v
+    }
+}

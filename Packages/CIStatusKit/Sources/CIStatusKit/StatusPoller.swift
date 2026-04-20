@@ -4,6 +4,23 @@ import os
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "net.shashankshekhar.vigilant", category: "StatusPoller")
 
+/// Outcome summary from a single poll cycle, returned to callers that need
+/// to react to per-repo fetch results (e.g. tracking repeated 404s for
+/// prune detection).
+public struct PollResult: Sendable {
+    /// Repos whose fetch returned 404 this cycle. Not retried after token
+    /// refresh — a 404 means the repo is gone, not an auth issue.
+    public let notFoundRepoIDs: Set<Int>
+    /// Repos whose fetch succeeded this cycle (no 401, 404, or rate-limit
+    /// issue). Used by the caller to reset any per-repo failure counters.
+    public let successfulRepoIDs: Set<Int>
+
+    public init(notFoundRepoIDs: Set<Int>, successfulRepoIDs: Set<Int>) {
+        self.notFoundRepoIDs = notFoundRepoIDs
+        self.successfulRepoIDs = successfulRepoIDs
+    }
+}
+
 public actor StatusPoller {
     /// Simplified fetcher for testing — takes account and repo, returns a status.
     /// The real implementation uses the internal clients dictionary.
@@ -12,9 +29,15 @@ public actor StatusPoller {
     /// Called when a 401 is detected. Returns true if the token was refreshed successfully.
     public typealias TokenRefresher = @Sendable (UUID) async -> Bool
 
+    /// Called after each poll cycle completes with a summary of which repos
+    /// 404'd vs succeeded. Used by AppState to track repeated 404s so it can
+    /// mark a repo as missing (deleted/transferred) after several cycles.
+    public typealias PollObserver = @Sendable (PollResult) async -> Void
+
     private let aggregator: StatusAggregator
     private let fetcher: RepoFetcher?
     private var tokenRefresher: TokenRefresher?
+    private var pollObserver: PollObserver?
     private var clients: [UUID: GitHubAPIClient] = [:]
     private var pollingTask: Task<Void, Never>?
 
@@ -30,6 +53,10 @@ public actor StatusPoller {
 
     public func setTokenRefresher(_ refresher: @escaping TokenRefresher) {
         tokenRefresher = refresher
+    }
+
+    public func setPollObserver(_ observer: @escaping PollObserver) {
+        pollObserver = observer
     }
 
     public func setClient(_ client: GitHubAPIClient, for accountID: UUID) {
@@ -53,7 +80,7 @@ public actor StatusPoller {
         pollingTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
-                await self.pollOnce(accounts: await accounts())
+                _ = await self.pollOnce(accounts: await accounts())
                 try? await Task.sleep(for: .seconds(intervalSeconds))
             }
         }
@@ -87,9 +114,12 @@ public actor StatusPoller {
     }
 
     /// Execute a single poll cycle across all accounts and monitored repos.
+    /// Returns a summary of per-repo outcomes (404'd vs succeeded) so callers
+    /// can track repeated failures (e.g. to prune deleted repos).
+    @discardableResult
     public func pollOnce(
         accounts: [(Account, [Repository])]
-    ) async {
+    ) async -> PollResult {
         // Reset per-poll refresh state so a new poll cycle is free to attempt
         // a fresh refresh — the previous cycle's cached outcome is no longer
         // authoritative (e.g. clock skew, a user-initiated re-auth).
@@ -134,12 +164,13 @@ public actor StatusPoller {
             finalResults.append(contentsOf: retryResults)
         }
 
-        // Phase 4: Update aggregator on MainActor
-        await MainActor.run {
+        // Phase 4: Update aggregator on MainActor and build PollResult.
+        let pollResult: PollResult = await MainActor.run {
             var authFailed: Set<UUID> = []
             var rateLimited: Set<UUID> = []
             var latestResetDate: Date?
             var notFound: Set<Int> = []
+            var succeeded: Set<Int> = []
             for (repo, account, status, issue) in finalResults {
                 aggregator.update(repo: repo, account: account, status: status)
                 switch issue {
@@ -154,14 +185,20 @@ public actor StatusPoller {
                         }
                     }
                 case .notFound: notFound.insert(repo.id)
-                case .none: break
+                case .none: succeeded.insert(repo.id)
                 }
             }
             aggregator.setAuthFailures(authFailed)
             aggregator.setRateLimits(rateLimited)
             aggregator.setRateLimitResetDate(rateLimited.isEmpty ? nil : latestResetDate)
             aggregator.setNotFoundRepos(notFound)
+            return PollResult(notFoundRepoIDs: notFound, successfulRepoIDs: succeeded)
         }
+
+        if let observer = pollObserver {
+            await observer(pollResult)
+        }
+        return pollResult
     }
 
     /// Fetch statuses for all monitored repos across accounts.
@@ -269,7 +306,7 @@ public actor StatusPoller {
                 )
             } catch {
                 let apiError = error as? GitHubAPIError
-                if apiError?.isUnauthorized == true || apiError?.isRateLimited == true { throw error }
+                if apiError?.isUnauthorized == true || apiError?.isRateLimited == true || apiError?.isNotFound == true { throw error }
                 logger.warning("\(repo.fullName, privacy: .private): actions fetch failed: \(error)")
                 return nil
             }
@@ -281,7 +318,7 @@ public actor StatusPoller {
                 )
             } catch {
                 let apiError = error as? GitHubAPIError
-                if apiError?.isUnauthorized == true || apiError?.isRateLimited == true { throw error }
+                if apiError?.isUnauthorized == true || apiError?.isRateLimited == true || apiError?.isNotFound == true { throw error }
                 logger.warning("\(repo.fullName, privacy: .private): commit status fetch failed: \(error)")
                 return nil
             }
