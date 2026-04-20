@@ -240,7 +240,7 @@ struct AccountsTab: View {
 
                 let tokenResponse = try await deviceFlow.pollForToken(deviceCode: code)
 
-                appState.reAuthenticateAccount(
+                try appState.reAuthenticateAccount(
                     account,
                     token: tokenResponse.accessToken,
                     refreshToken: tokenResponse.refreshToken
