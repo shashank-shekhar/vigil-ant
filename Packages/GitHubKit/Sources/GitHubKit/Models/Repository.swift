@@ -9,6 +9,11 @@ public struct Repository: Identifiable, Codable, Hashable, Sendable {
     public var hasWorkflows: Bool
     public let accountID: UUID
     public var pushedAt: Date?
+    /// Set to true when the repo has been confirmed missing on GitHub
+    /// (deleted, transferred, or renamed). Populated by AppState after
+    /// repeated 404s during polling; persisted so the UI can offer a
+    /// prune action across launches.
+    public var isMissing: Bool
 
     public init(
         id: Int,
@@ -18,7 +23,8 @@ public struct Repository: Identifiable, Codable, Hashable, Sendable {
         isMonitored: Bool = false,
         hasWorkflows: Bool = false,
         accountID: UUID,
-        pushedAt: Date? = nil
+        pushedAt: Date? = nil,
+        isMissing: Bool = false
     ) {
         self.id = id
         self.fullName = fullName
@@ -28,5 +34,23 @@ public struct Repository: Identifiable, Codable, Hashable, Sendable {
         self.hasWorkflows = hasWorkflows
         self.accountID = accountID
         self.pushedAt = pushedAt
+        self.isMissing = isMissing
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, fullName, defaultBranch, isPrivate, isMonitored, hasWorkflows, accountID, pushedAt, isMissing
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(Int.self, forKey: .id)
+        self.fullName = try c.decode(String.self, forKey: .fullName)
+        self.defaultBranch = try c.decode(String.self, forKey: .defaultBranch)
+        self.isPrivate = try c.decode(Bool.self, forKey: .isPrivate)
+        self.isMonitored = try c.decodeIfPresent(Bool.self, forKey: .isMonitored) ?? false
+        self.hasWorkflows = try c.decodeIfPresent(Bool.self, forKey: .hasWorkflows) ?? false
+        self.accountID = try c.decode(UUID.self, forKey: .accountID)
+        self.pushedAt = try c.decodeIfPresent(Date.self, forKey: .pushedAt)
+        self.isMissing = try c.decodeIfPresent(Bool.self, forKey: .isMissing) ?? false
     }
 }

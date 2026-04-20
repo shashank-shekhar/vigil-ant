@@ -5,7 +5,9 @@ import GitHubKit
 struct RepoRowView: View {
     let entry: RepoStatusEntry
     var isNotFound: Bool = false
+    var isMissing: Bool = false
     var hideOwnerPrefix: Bool = false
+    var onRemove: (() -> Void)? = nil
     @State private var isSpinning = false
 
     private var repoDisplayName: String {
@@ -15,9 +17,16 @@ struct RepoRowView: View {
         return entry.repo.fullName
     }
 
+    private var isDimmed: Bool { isNotFound || isMissing }
+
     var body: some View {
         HStack(spacing: 12) {
-            if entry.status.status == .building {
+            if isMissing {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.orange)
+                    .frame(width: 8, height: 8)
+            } else if entry.status.status == .building {
                 buildingIndicator
             } else {
                 Circle()
@@ -28,9 +37,13 @@ struct RepoRowView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(repoDisplayName)
                     .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(isNotFound ? .secondary : .primary)
+                    .foregroundStyle(isDimmed ? .secondary : .primary)
 
-                if isNotFound {
+                if isMissing {
+                    Text("Repository missing — deleted, transferred, or renamed")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.orange)
+                } else if isNotFound {
                     Text("Repository not found — may have been deleted or transferred")
                         .font(.system(size: 11))
                         .foregroundStyle(.orange)
@@ -43,16 +56,25 @@ struct RepoRowView: View {
 
             Spacer()
 
-            Image("icon-arrow-right")
-                .resizable()
-                .frame(width: 12, height: 12)
-                .foregroundStyle(.quaternary)
+            if isMissing, let onRemove {
+                Button("Remove", action: onRemove)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.blue)
+                    .accessibilityHint(String(localized: "Removes this repository from Vigil-ant"))
+            } else {
+                Image("icon-arrow-right")
+                    .resizable()
+                    .frame(width: 12, height: 12)
+                    .foregroundStyle(.quaternary)
+            }
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 16)
+        .opacity(isDimmed ? 0.75 : 1.0)
         .contentShape(Rectangle())
         .overlay(alignment: .leading) {
-            if entry.status.status == .failure {
+            if entry.status.status == .failure && !isMissing {
                 Rectangle()
                     .fill(.red)
                     .frame(width: 3)
@@ -62,6 +84,7 @@ struct RepoRowView: View {
         .accessibilityLabel("\(repoDisplayName): \(accessibilityStatusLabel)")
         .accessibilityHint(entry.status.buildURL != nil ? String(localized: "Opens build in browser") : "")
         .onTapGesture {
+            if isMissing { return }
             if let url = entry.status.buildURL {
                 NSWorkspace.shared.open(url)
             }
@@ -89,7 +112,8 @@ struct RepoRowView: View {
     }
 
     private var accessibilityStatusLabel: String {
-        switch entry.status.status {
+        if isMissing { return String(localized: "missing, repository deleted or transferred") }
+        return switch entry.status.status {
         case .success: String(localized: "passing")
         case .failure: String(localized: "failing")
         case .building: String(localized: "building")

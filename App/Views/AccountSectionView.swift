@@ -6,14 +6,21 @@ struct AccountSectionView: View {
     let account: Account
     let entries: [RepoStatusEntry]
     var notFoundRepoIDs: Set<Int> = []
+    var missingRepoIDs: Set<Int> = []
+    var onRemoveMissing: ((Repository) -> Void)? = nil
 
     var body: some View {
         Section {
             ForEach(entries, id: \.repo.id) { entry in
+                let isMissing = missingRepoIDs.contains(entry.repo.id)
                 RepoRowView(
                     entry: entry,
-                    isNotFound: notFoundRepoIDs.contains(entry.repo.id),
-                    hideOwnerPrefix: account.hideOwnerPrefix
+                    isNotFound: notFoundRepoIDs.contains(entry.repo.id) && !isMissing,
+                    isMissing: isMissing,
+                    hideOwnerPrefix: account.hideOwnerPrefix,
+                    onRemove: isMissing
+                        ? { onRemoveMissing?(entry.repo) }
+                        : nil
                 )
             }
         } header: {

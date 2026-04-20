@@ -92,7 +92,18 @@ final class AppState {
 
     // MARK: - Data Schema Versioning
 
-    private static let currentDataSchemaVersion = 1
+    private static let currentDataSchemaVersion = 2
+
+    // MARK: - Missing Repo Tracking
+
+    /// Number of consecutive 404 poll cycles required before flipping a
+    /// repo to `isMissing = true`. Guards against transient GitHub blips
+    /// (e.g. brief 404 on a renamed-and-redirected URL).
+    private static let missingThreshold = 3
+
+    /// In-memory per-repo consecutive-404 counter. Not persisted — on launch
+    /// we trust only the `isMissing` flag already stored on each Repository.
+    private var notFoundStreaks: [Int: Int] = [:]
 
     // Persisted
     var accounts: [Account] = [] {
@@ -191,7 +202,8 @@ final class AppState {
         let accountRepos = accounts.map { acct in
             (acct, repositories.filter { $0.accountID == acct.id })
         }
-        await poller.pollOnce(accounts: accountRepos)
+        let result = await poller.pollOnce(accounts: accountRepos)
+        applyPollResult(result)
         checkForNewFailures()
         saveCachedStatuses()
 
@@ -336,7 +348,44 @@ final class AppState {
             await poller.setTokenRefresher { [weak self] accountID in
                 await self?.refreshToken(for: accountID) ?? false
             }
+            await poller.setPollObserver { [weak self] result in
+                await self?.applyPollResult(result)
+            }
         }
+    }
+
+    /// Update the in-memory 404 streak counter and flip repos to `isMissing`
+    /// once the threshold is reached. Called after every poll cycle.
+    func applyPollResult(_ result: PollResult) {
+        // Reset counters for repos that just fetched successfully.
+        for repoID in result.successfulRepoIDs {
+            notFoundStreaks.removeValue(forKey: repoID)
+            if let idx = repositories.firstIndex(where: { $0.id == repoID }),
+               repositories[idx].isMissing {
+                repositories[idx].isMissing = false
+            }
+        }
+
+        // Increment the streak for repos that 404'd this cycle; flip to
+        // `isMissing` when we hit the threshold.
+        for repoID in result.notFoundRepoIDs {
+            let next = (notFoundStreaks[repoID] ?? 0) + 1
+            notFoundStreaks[repoID] = next
+            if next >= Self.missingThreshold,
+               let idx = repositories.firstIndex(where: { $0.id == repoID }),
+               !repositories[idx].isMissing {
+                repositories[idx].isMissing = true
+                logger.warning("Repo \(self.repositories[idx].fullName) marked as missing after \(next) consecutive 404s")
+            }
+        }
+    }
+
+    /// Remove a repo that's been confirmed missing. Clears its cached state
+    /// so lingering notifications don't fire.
+    func removeMissingRepo(_ repo: Repository) {
+        repositories.removeAll { $0.id == repo.id }
+        notFoundStreaks.removeValue(forKey: repo.id)
+        previousStatuses.removeValue(forKey: repo.id)
     }
 
     /// Attempt to refresh an expired access token using the stored refresh token.
@@ -614,6 +663,11 @@ final class AppState {
                 // existing UserDefaults keys (accounts, repositories, pollInterval) are
                 // already in the correct format.
                 logger.info("Migrating data schema from version 0 to 1")
+            case 1:
+                // Version 1 → 2: Added `isMissing` to Repository. The custom Codable
+                // decoder defaults absent values to false, so no data transformation
+                // is needed here — just bump the marker.
+                logger.info("Migrating data schema from version 1 to 2")
             default:
                 logger.warning("Unknown data schema version \(version) — skipping migration step")
             }
