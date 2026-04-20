@@ -90,8 +90,8 @@ public struct DeviceFlowManager: Sendable {
         request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
         request.httpBody = Self.formEncode(["client_id": clientID])
 
-        let (data, httpResponse) = try await session.data(for: request)
-        logger.debug("requestDeviceCode status=\((httpResponse as? HTTPURLResponse)?.statusCode ?? 0)")
+        let (data, httpResponse) = try await Self.executeWithRetry(request: request, session: session)
+        logger.debug("requestDeviceCode status=\(httpResponse.statusCode)")
 
         // Check for error response from GitHub
         if let errorResponse = try? JSONDecoder().decode(GitHubErrorResponse.self, from: data),
@@ -175,12 +175,52 @@ public struct DeviceFlowManager: Sendable {
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
 
-        let (data, response) = try await session.data(for: request)
-        if let httpResponse = response as? HTTPURLResponse,
-           !(200...299).contains(httpResponse.statusCode) {
+        let (data, httpResponse) = try await Self.executeWithRetry(request: request, session: session)
+        if !(200...299).contains(httpResponse.statusCode) {
             throw DeviceFlowError.requestFailed("GitHub API returned HTTP \(httpResponse.statusCode)")
         }
         return try JSONDecoder().decode(GitHubUser.self, from: data)
+    }
+
+    /// Execute a request with exponential backoff retry for transient errors (5xx, network-level).
+    /// Does not retry 4xx responses. Mirrors the pattern in `GitHubAPIClient.executeRequest`.
+    private static func executeWithRetry(
+        request: URLRequest,
+        session: URLSession,
+        maxRetries: Int = 2
+    ) async throws -> (Data, HTTPURLResponse) {
+        for attempt in 0...maxRetries {
+            if attempt > 0 {
+                try await Task.sleep(for: .seconds(pow(2.0, Double(attempt - 1))))
+            }
+
+            let data: Data
+            let httpResponse: HTTPURLResponse
+
+            do {
+                let (d, response) = try await session.data(for: request)
+                guard let r = response as? HTTPURLResponse else {
+                    throw DeviceFlowError.requestFailed("Invalid response from GitHub")
+                }
+                data = d
+                httpResponse = r
+            } catch let error as DeviceFlowError {
+                throw error
+            } catch {
+                // Network-level error (timeout, DNS, connection reset) — retry
+                if attempt < maxRetries { continue }
+                throw error
+            }
+
+            // Server error — retry if attempts remain; 4xx falls through.
+            if (500...599).contains(httpResponse.statusCode) && attempt < maxRetries {
+                continue
+            }
+
+            return (data, httpResponse)
+        }
+
+        throw DeviceFlowError.requestFailed("Exhausted retries")
     }
 
     private struct GitHubErrorResponse: Codable {
