@@ -138,29 +138,20 @@ struct AccountsTab: View {
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
 
-            HStack(spacing: 8) {
-                Text(code.userCode)
-                    .font(.system(size: 24, weight: .bold, design: .monospaced))
-                    .textSelection(.enabled)
+            Text(code.userCode)
+                .font(.system(size: 24, weight: .bold, design: .monospaced))
+                .textSelection(.enabled)
 
-                Button(action: {
+            HStack(spacing: 12) {
+                Button(showCopied ? "Copied! Opening GitHub…" : "Copy Code & Open GitHub") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString(code.userCode, forType: .string)
                     showCopied = true
+                    NSWorkspace.shared.open(code.verificationURI)
                     Task {
                         try? await Task.sleep(for: .seconds(2))
                         showCopied = false
                     }
-                }) {
-                    Text(showCopied ? "Copied!" : "Copy")
-                        .font(.system(size: 11))
-                }
-                .buttonStyle(.bordered)
-            }
-
-            HStack(spacing: 12) {
-                Button("Open GitHub") {
-                    NSWorkspace.shared.open(code.verificationURI)
                 }
                 .buttonStyle(.borderedProminent)
 
@@ -269,17 +260,12 @@ struct AccountsTab: View {
                 .textSelection(.enabled)
 
             HStack(spacing: 10) {
-                Button("Open GitHub") {
+                Button("Copy Code & Open GitHub") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(code.userCode, forType: .string)
                     NSWorkspace.shared.open(code.verificationURI)
                 }
                 .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-
-                Button("Copy Code") {
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(code.userCode, forType: .string)
-                }
-                .buttonStyle(.bordered)
                 .controlSize(.small)
 
                 Button("Cancel") {
