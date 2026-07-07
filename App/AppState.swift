@@ -166,6 +166,7 @@ final class AppState {
         loadAccounts()
         loadRepositories()
         loadCachedStatuses()
+        logLaunchInfo()
         hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
         let stored = UserDefaults.standard.double(forKey: "pollInterval")
         if stored > 0 { pollIntervalSeconds = stored }
@@ -548,6 +549,16 @@ final class AppState {
                 workflowCheckError = finalError
             }
         }
+    }
+
+    private func logLaunchInfo() {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+        logger.info("App launched version=\(version)")
+        let summary = accounts.enumerated().map { index, account in
+            let accountRepos = repositories.filter { $0.accountID == account.id }
+            return "account \(index + 1): \(accountRepos.count) repos; \(accountRepos.filter(\.isMonitored).count) synced"
+        }.joined(separator: " | ")
+        logger.info("Repos at launch: \(self.accounts.count) accounts, \(self.repositories.count) repos total; \(summary.isEmpty ? "none" : summary)")
     }
 
     // MARK: - Persistence (UserDefaults)

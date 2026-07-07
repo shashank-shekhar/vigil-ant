@@ -124,15 +124,18 @@ struct GeneralTab: View {
         Task.detached {
             do {
                 let store = try OSLogStore(scope: .currentProcessIdentifier)
-                let position = store.position(timeIntervalSinceLatestBoot: 0)
+                let sixHoursAgo = Date().addingTimeInterval(-6 * 3600)
+                let position = store.position(date: sixHoursAgo)
                 let entries = try store.getEntries(at: position)
                     .compactMap { $0 as? OSLogEntryLog }
                     .map { "[\($0.date.formatted(.iso8601))] [\($0.category)] \($0.composedMessage)" }
 
-                let text = entries.joined(separator: "\n")
+                let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
+                let lines = entries.isEmpty ? ["No logs found for the last 6 hours."] : entries
+                let text = (["Vigil-ant \(version)"] + lines).joined(separator: "\n")
                 await MainActor.run {
                     NSPasteboard.general.clearContents()
-                    NSPasteboard.general.setString(text.isEmpty ? "No logs found for this session." : text, forType: .string)
+                    NSPasteboard.general.setString(text, forType: .string)
                     logsCopyState = .copied
                 }
             } catch {
