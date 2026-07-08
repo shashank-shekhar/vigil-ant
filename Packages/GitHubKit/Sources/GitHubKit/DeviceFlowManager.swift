@@ -140,9 +140,14 @@ public struct DeviceFlowManager: Sendable {
                 "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
             ])
 
-            let (data, _) = try await session.data(for: request)
+            // Route through executeWithRetry (transient 5xx/network retry + response
+            // validation), mirroring fetchUser. GitHub returns HTTP 200 for the polling
+            // states (authorization_pending, slow_down, …) with the status in the JSON
+            // body, so decode first and let the OAuth error drive control flow; a non-2xx
+            // response with no recognized OAuth error is treated as a hard failure below.
+            let (data, httpResponse) = try await Self.executeWithRetry(request: request, session: session)
             let response = try JSONDecoder().decode(TokenPollResponse.self, from: data)
-            logger.debug("pollForToken error=\(response.error ?? "none", privacy: .public)")
+            logger.debug("pollForToken status=\(httpResponse.statusCode) error=\(response.error ?? "none", privacy: .public)")
 
             if let token = response.accessToken {
                 return TokenResponse(
@@ -164,8 +169,14 @@ public struct DeviceFlowManager: Sendable {
                 throw DeviceFlowError.accessDenied
             case "device_flow_disabled":
                 throw DeviceFlowError.deviceFlowDisabled
-            default:
-                throw DeviceFlowError.requestFailed(response.error ?? "unknown")
+            case .some(let error):
+                throw DeviceFlowError.requestFailed(error)
+            case .none:
+                // No token and no OAuth error field — surface the HTTP status.
+                if !(200...299).contains(httpResponse.statusCode) {
+                    throw DeviceFlowError.requestFailed("GitHub returned HTTP \(httpResponse.statusCode)")
+                }
+                throw DeviceFlowError.requestFailed("unknown")
             }
         }
     }

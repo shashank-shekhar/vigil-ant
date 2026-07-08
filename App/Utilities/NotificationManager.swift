@@ -3,6 +3,9 @@ internal import AppKit
 import UserNotifications
 import GitHubKit
 import CIStatusKit
+import os
+
+private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "NotificationManager")
 
 final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     static let shared = NotificationManager()
@@ -13,7 +16,13 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     }
 
     func requestPermission() {
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error {
+                logger.error("Notification authorization request failed: \(error.localizedDescription, privacy: .public)")
+            } else if !granted {
+                logger.info("Notification authorization denied by the user")
+            }
+        }
     }
 
     func notifyBuildFailure(repo: Repository, buildURL: URL?) {
