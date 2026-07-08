@@ -83,7 +83,7 @@ public struct DeviceFlowManager: Sendable {
         self.clientID = clientID
     }
 
-    public func requestDeviceCode(session: URLSession = .shared) async throws -> DeviceCode {
+    public func requestDeviceCode(session: URLSession = CertificatePinner.sharedPinnedSession) async throws -> DeviceCode {
         var request = URLRequest(url: Self.authBaseURL.appendingPathComponent("login/device/code"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")
@@ -121,7 +121,7 @@ public struct DeviceFlowManager: Sendable {
         }
     }
 
-    public func pollForToken(deviceCode: DeviceCode, session: URLSession = .shared) async throws -> TokenResponse {
+    public func pollForToken(deviceCode: DeviceCode, session: URLSession = CertificatePinner.sharedPinnedSession) async throws -> TokenResponse {
         var currentInterval = deviceCode.interval
 
         while true {
@@ -170,7 +170,7 @@ public struct DeviceFlowManager: Sendable {
         }
     }
 
-    public func fetchUser(token: String, session: URLSession = .shared) async throws -> GitHubUser {
+    public func fetchUser(token: String, session: URLSession = CertificatePinner.sharedPinnedSession) async throws -> GitHubUser {
         var request = URLRequest(url: Self.apiBaseURL.appendingPathComponent("user"))
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
@@ -241,7 +241,7 @@ public struct DeviceFlowManager: Sendable {
     }
 
     /// Exchange a refresh token for a new access token (and rotated refresh token).
-    public func refreshToken(refreshToken: String, session: URLSession = .shared) async throws -> TokenResponse {
+    public func refreshToken(refreshToken: String, session: URLSession = CertificatePinner.sharedPinnedSession) async throws -> TokenResponse {
         var request = URLRequest(url: Self.authBaseURL.appendingPathComponent("login/oauth/access_token"))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Accept")

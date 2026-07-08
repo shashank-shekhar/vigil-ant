@@ -12,11 +12,11 @@ public actor GitHubAPIClient {
     /// while staying well above any realistic active repo count.
     static let defaultCacheCapacity = 100
 
-    public init(token: String, session: URLSession = .shared) {
+    public init(token: String, session: URLSession = CertificatePinner.sharedPinnedSession) {
         self.init(token: token, session: session, cacheCapacity: Self.defaultCacheCapacity)
     }
 
-    init(token: String, session: URLSession = .shared, cacheCapacity: Int) {
+    init(token: String, session: URLSession = CertificatePinner.sharedPinnedSession, cacheCapacity: Int) {
         self.token = token
         self.session = session
         self.etagCache = LRUCache(capacity: cacheCapacity)
