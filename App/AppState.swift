@@ -398,13 +398,26 @@ final class AppState {
     /// Attempt to refresh an expired access token using the stored refresh token.
     private func refreshToken(for accountID: UUID) async -> Bool {
         guard let refreshToken = KeychainHelper.loadRefreshToken(for: accountID) else {
+            // No stored refresh token — the account can't be refreshed and must
+            // be re-authenticated. Surface it via the existing auth-failed UI.
+            markAuthFailed(accountID)
             return false
         }
 
         let deviceFlow = DeviceFlowManager(clientID: OAuthConfig.clientID)
+        let response: TokenResponse
         do {
-            let response = try await deviceFlow.refreshToken(refreshToken: refreshToken)
+            response = try await deviceFlow.refreshToken(refreshToken: refreshToken)
+        } catch {
+            // The token exchange failed (e.g. the refresh token was revoked or
+            // expired). Mark the account auth-failed so the UI prompts a
+            // re-authentication instead of silently breaking on the next poll.
+            logger.warning("Token refresh failed for \(accountID): \(error)")
+            markAuthFailed(accountID)
+            return false
+        }
 
+        do {
             // Save refresh token first — it's rotated on each use, so the old one
             // is invalidated server-side. If the access token save fails afterward,
             // the refresh token is still valid for the next attempt.
@@ -412,14 +425,29 @@ final class AppState {
                 try KeychainHelper.saveRefreshToken(newRefreshToken, for: accountID)
             }
             try KeychainHelper.save(token: response.accessToken, for: accountID)
-
-            // Update the API client with the new access token
-            await poller.updateClientToken(response.accessToken, for: accountID)
-            return true
         } catch {
-            logger.warning("Token refresh failed for \(accountID): \(error)")
+            // We obtained fresh tokens but couldn't persist them to the Keychain,
+            // leaving the account in a broken state that needs re-authentication.
+            // Surface it via both the auth-failed UI and a user notification.
+            // Never include the token or refresh token in what we log or show.
+            logger.error("Failed to persist refreshed token for \(accountID): \(error)")
+            markAuthFailed(accountID)
+            if let account = accounts.first(where: { $0.id == accountID }) {
+                NotificationManager.shared.notifyAuthFailure(account: account)
+            }
             return false
         }
+
+        // Update the API client with the new access token
+        await poller.updateClientToken(response.accessToken, for: accountID)
+        return true
+    }
+
+    /// Add an account to the aggregator's auth-failed set so the existing
+    /// re-authenticate UI (AccountsTab / PopoverView) surfaces it. Additive so
+    /// other accounts' auth-failed state is preserved.
+    private func markAuthFailed(_ accountID: UUID) {
+        aggregator.setAuthFailures(aggregator.authFailedAccountIDs.union([accountID]))
     }
 
     func checkForNewFailures() {

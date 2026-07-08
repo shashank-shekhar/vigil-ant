@@ -46,6 +46,20 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
         add(content, identifier: "build-failure-summary")
     }
 
+    /// Notify the user that an account can no longer be refreshed and needs
+    /// re-authentication. Only the account's public handle is included — never
+    /// a token or refresh token. Gated on the master notifications switch only,
+    /// since this is an account-health alert rather than a build event.
+    func notifyAuthFailure(account: Account) {
+        guard UserDefaults.standard.bool(forKey: "showNotifications") else { return }
+        let content = makeContent(
+            title: "Account Needs Re-authentication",
+            body: "Sign in again to keep monitoring @\(account.username).",
+            buildURL: nil
+        )
+        add(content, identifier: "auth-failure-\(account.id.uuidString)")
+    }
+
     private func shouldNotify(for preferenceKey: String) -> Bool {
         UserDefaults.standard.bool(forKey: "showNotifications")
             && UserDefaults.standard.bool(forKey: preferenceKey)
