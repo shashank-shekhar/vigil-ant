@@ -1,4 +1,11 @@
+# Security: Do not switch to pull_request_target or consume PR-controlled strings
+# (github.event.*, github.head_ref, PR title/body/branch names) in run: steps
+# without review — that is the classic GitHub Actions script-injection sink.
 name: CI
+
+# Least-privilege default token: this workflow only tests and builds.
+permissions:
+  contents: read
 
 on:
   push:
@@ -32,7 +39,7 @@ jobs:
       matrix:
         package: [GitHubKit, CIStatusKit]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Test ${{ matrix.package }}
         run: |
@@ -44,7 +51,7 @@ jobs:
     runs-on: macos-15
     needs: test-packages
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Create Secrets.xcconfig
         env:

@@ -1,9 +1,16 @@
+# Security: Do not switch to pull_request_target or consume PR-controlled strings
+# (github.event.*, github.head_ref, PR title/body/branch names) in run: steps
+# without review — that is the classic GitHub Actions script-injection sink.
 name: Release
 
 on:
   push:
     tags: ['v*']
 
+# Least-privilege default token. contents: write is required to create the
+# GitHub Release, upload assets, and push the appcast commit to main. The
+# Homebrew tap is updated in a separate repo using HOMEBREW_TAP_TOKEN, so no
+# additional scopes are granted here.
 permissions:
   contents: write
 
@@ -12,7 +19,7 @@ jobs:
     name: Build and Release
     runs-on: macos-15
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
 
       - name: Create Secrets.xcconfig
         env:
