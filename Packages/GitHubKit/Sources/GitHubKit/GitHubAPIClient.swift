@@ -12,6 +12,10 @@ public actor GitHubAPIClient {
     /// while staying well above any realistic active repo count.
     static let defaultCacheCapacity = 100
 
+    /// Fallback back-off applied when the server signals a rate limit but sends
+    /// no usable reset timestamp — retry no sooner than this many seconds out.
+    static let rateLimitFallbackSeconds: TimeInterval = 60
+
     public init(token: String, session: URLSession = CertificatePinner.sharedPinnedSession) {
         self.init(token: token, session: session, cacheCapacity: Self.defaultCacheCapacity)
     }
@@ -151,7 +155,7 @@ public actor GitHubAPIClient {
             // Rate limited: 429 or 403 with exhausted quota
             if httpResponse.statusCode == 429 ||
                (httpResponse.statusCode == 403 && httpResponse.value(forHTTPHeaderField: "X-RateLimit-Remaining") == "0") {
-                throw GitHubAPIError.rateLimited(retryAfter: rateLimitResetDate ?? Date().addingTimeInterval(60))
+                throw GitHubAPIError.rateLimited(retryAfter: rateLimitResetDate ?? Date().addingTimeInterval(Self.rateLimitFallbackSeconds))
             }
 
             // Server error — retry if attempts remain
