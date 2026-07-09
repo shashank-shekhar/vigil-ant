@@ -301,42 +301,9 @@ final class AppState {
 
             do {
                 let repoResponses = try await client.fetchRepositories()
-                // Cap in-flight workflow-check requests to avoid fan-out blasts.
-                // Uses a sliding window inside a single task group so a new request
-                // starts as soon as any earlier one finishes.
-                let maxInFlight = 15
-                let accountRepos: [Repository] = await withTaskGroup(of: Repository.self) { group in
-                    var iterator = repoResponses.makeIterator()
-                    var collected: [Repository] = []
-
-                    func submitNext() {
-                        guard let resp = iterator.next() else { return }
-                        group.addTask {
-                            guard let (owner, name) = resp.ownerAndName else {
-                                return Repository(
-                                    id: resp.id, fullName: resp.fullName,
-                                    defaultBranch: resp.defaultBranch, isPrivate: resp.isPrivate,
-                                    hasWorkflows: false, accountID: account.id, pushedAt: resp.pushedAt
-                                )
-                            }
-                            let has = (try? await client.fetchHasWorkflows(
-                                owner: owner, repo: name
-                            )) ?? false
-                            return Repository(
-                                id: resp.id, fullName: resp.fullName,
-                                defaultBranch: resp.defaultBranch, isPrivate: resp.isPrivate,
-                                hasWorkflows: has, accountID: account.id, pushedAt: resp.pushedAt
-                            )
-                        }
-                    }
-
-                    for _ in 0..<min(maxInFlight, repoResponses.count) { submitNext() }
-                    while let repo = await group.next() {
-                        collected.append(repo)
-                        submitNext()
-                    }
-                    return collected
-                }
+                let accountRepos = await Self.resolveRepositories(
+                    from: repoResponses, accountID: account.id, client: client
+                )
                 allRepos.append(contentsOf: accountRepos)
             } catch {
                 logger.warning("Failed to sync repos for \(account.name): \(error)")
@@ -354,6 +321,59 @@ final class AppState {
         let syncedAccountIDs = Set(allRepos.map(\.accountID))
         let unsyncedRepos = repositories.filter { !syncedAccountIDs.contains($0.accountID) }
         repositories = unsyncedRepos + allRepos
+    }
+
+    // MARK: - Repository Workflow Fan-out
+
+    /// Max concurrent `fetchHasWorkflows` checks when resolving a set of repos.
+    /// Caps fan-out so syncing or adding an account doesn't blast the API.
+    static let maxWorkflowChecksInFlight = 15
+
+    /// Build a `Repository` from an API response, resolving its `hasWorkflows`
+    /// flag once (false when the owner/name can't be parsed or the check fails).
+    nonisolated static func makeRepository(
+        from resp: RepositoryResponse,
+        accountID: UUID,
+        client: GitHubAPIClient
+    ) async -> Repository {
+        var hasWorkflows = false
+        if let (owner, name) = resp.ownerAndName {
+            hasWorkflows = (try? await client.fetchHasWorkflows(owner: owner, repo: name)) ?? false
+        }
+        return Repository(
+            id: resp.id, fullName: resp.fullName,
+            defaultBranch: resp.defaultBranch, isPrivate: resp.isPrivate,
+            hasWorkflows: hasWorkflows, accountID: accountID, pushedAt: resp.pushedAt
+        )
+    }
+
+    /// Resolve `hasWorkflows` for many repo responses concurrently, capping
+    /// in-flight requests with a sliding window so a new check starts as soon as
+    /// any earlier one finishes. `onProgress` is invoked on the main actor as
+    /// each repo completes with the running completed/total count.
+    static func resolveRepositories(
+        from responses: [RepositoryResponse],
+        accountID: UUID,
+        client: GitHubAPIClient,
+        onProgress: ((_ completed: Int, _ total: Int) -> Void)? = nil
+    ) async -> [Repository] {
+        await withTaskGroup(of: Repository.self) { group in
+            var iterator = responses.makeIterator()
+            var collected: [Repository] = []
+
+            func submitNext() {
+                guard let resp = iterator.next() else { return }
+                group.addTask { await makeRepository(from: resp, accountID: accountID, client: client) }
+            }
+
+            for _ in 0..<min(maxWorkflowChecksInFlight, responses.count) { submitNext() }
+            while let repo = await group.next() {
+                collected.append(repo)
+                onProgress?(collected.count, responses.count)
+                submitNext()
+            }
+            return collected
+        }
     }
 
     private func rebuildClients() {

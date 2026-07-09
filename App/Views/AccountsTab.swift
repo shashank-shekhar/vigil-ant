@@ -347,48 +347,15 @@ struct AccountsTab: View {
                     try KeychainHelper.saveRefreshToken(refreshToken, for: account.id)
                 }
 
-                // Fetch repos and check which have workflows (batched)
+                // Fetch repos and resolve which have workflows via the shared
+                // sliding-window fan-out, driving the progress bar from its callback.
                 let client = GitHubAPIClient(token: tokenResponse.accessToken)
                 let repoResponses = try await client.fetchRepositories()
-                var repos: [Repository] = []
-                let batchSize = 10
                 fetchProgress = (current: 0, total: repoResponses.count)
-                for batchStart in stride(from: 0, to: repoResponses.count, by: batchSize) {
-                    let batch = repoResponses[batchStart..<min(batchStart + batchSize, repoResponses.count)]
-                    let batchResults: [Repository] = await withTaskGroup(of: Repository.self) { group in
-                        for resp in batch {
-                            group.addTask {
-                                guard let (owner, name) = resp.ownerAndName else {
-                                    return Repository(
-                                        id: resp.id,
-                                        fullName: resp.fullName,
-                                        defaultBranch: resp.defaultBranch,
-                                        isPrivate: resp.isPrivate,
-                                        hasWorkflows: false,
-                                        accountID: account.id,
-                                        pushedAt: resp.pushedAt
-                                    )
-                                }
-                                let has = (try? await client.fetchHasWorkflows(owner: owner, repo: name)) ?? false
-                                return Repository(
-                                    id: resp.id,
-                                    fullName: resp.fullName,
-                                    defaultBranch: resp.defaultBranch,
-                                    isPrivate: resp.isPrivate,
-                                    hasWorkflows: has,
-                                    accountID: account.id,
-                                    pushedAt: resp.pushedAt
-                                )
-                            }
-                        }
-                        var collected: [Repository] = []
-                        for await repo in group {
-                            collected.append(repo)
-                        }
-                        return collected
-                    }
-                    repos.append(contentsOf: batchResults)
-                    fetchProgress = (current: repos.count, total: repoResponses.count)
+                var repos = await AppState.resolveRepositories(
+                    from: repoResponses, accountID: account.id, client: client
+                ) { completed, total in
+                    fetchProgress = (current: completed, total: total)
                 }
                 fetchProgress = nil
                 // Preserve monitoring preferences from previously disconnected accounts
