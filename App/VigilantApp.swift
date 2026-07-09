@@ -62,6 +62,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             await appState.stopPolling()
             semaphore.signal()
         }
-        _ = semaphore.wait(timeout: .now() + 0.5)
+        _ = semaphore.wait(timeout: .now() + PollConfiguration.shutdownGraceSeconds)
     }
 }

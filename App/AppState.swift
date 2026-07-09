@@ -5,6 +5,25 @@ import os
 
 private let logger = Logger(subsystem: Bundle.main.bundleIdentifier!, category: "AppState")
 
+// MARK: - Poll Configuration
+
+/// Tunable timing/threshold constants for polling and app lifecycle, kept in
+/// one place so they're easy to find and reason about together.
+enum PollConfiguration {
+    /// Consecutive 404 poll cycles required before flipping a repo to
+    /// `isMissing`. Guards against transient GitHub blips (e.g. a brief 404 on
+    /// a renamed-and-redirected URL).
+    static let missingThreshold = 3
+
+    /// Re-check each repo's `hasWorkflows` flag every N poll cycles to pick up
+    /// repos that have since added or removed GitHub Actions.
+    static let workflowRefreshCycleInterval = 5
+
+    /// Best-effort grace period allowed for in-flight polling to cancel on app
+    /// termination before the process is torn down.
+    static let shutdownGraceSeconds: TimeInterval = 0.5
+}
+
 // MARK: - Cached Status Entry
 
 private struct CachedRepoStatus: Codable {
@@ -95,11 +114,6 @@ final class AppState {
     private static let currentDataSchemaVersion = 2
 
     // MARK: - Missing Repo Tracking
-
-    /// Number of consecutive 404 poll cycles required before flipping a
-    /// repo to `isMissing = true`. Guards against transient GitHub blips
-    /// (e.g. brief 404 on a renamed-and-redirected URL).
-    private static let missingThreshold = 3
 
     /// In-memory per-repo consecutive-404 counter. Not persisted — on launch
     /// we trust only the `isMissing` flag already stored on each Repository.
@@ -217,9 +231,9 @@ final class AppState {
         saveCachedStatuses()
 
         // Re-check workflow flags: immediately if none have workflows (broken state),
-        // otherwise periodically every 5 poll cycles to pick up changes.
+        // otherwise periodically every few poll cycles to pick up changes.
         pollCyclesSinceWorkflowRefresh += 1
-        if !hasPollableRepos || pollCyclesSinceWorkflowRefresh >= 5 {
+        if !hasPollableRepos || pollCyclesSinceWorkflowRefresh >= PollConfiguration.workflowRefreshCycleInterval {
             pollCyclesSinceWorkflowRefresh = 0
             refreshWorkflowFlags()
         }
@@ -378,7 +392,7 @@ final class AppState {
         for repoID in result.notFoundRepoIDs {
             let next = (notFoundStreaks[repoID] ?? 0) + 1
             notFoundStreaks[repoID] = next
-            if next >= Self.missingThreshold,
+            if next >= PollConfiguration.missingThreshold,
                let idx = repositories.firstIndex(where: { $0.id == repoID }),
                !repositories[idx].isMissing {
                 repositories[idx].isMissing = true
@@ -565,9 +579,7 @@ final class AppState {
                 }
             }
 
-            let updates = pendingUpdates
-            let finalError = errorMessage
-            await MainActor.run {
+            await MainActor.run { [updates = pendingUpdates, finalError = errorMessage] in
                 for (repoID, has) in updates {
                     if let idx = repositories.firstIndex(where: { $0.id == repoID }),
                        repositories[idx].hasWorkflows != has {

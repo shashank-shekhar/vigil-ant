@@ -19,6 +19,15 @@ struct PopoverView: View {
         return appState.accounts.isEmpty
     }
 
+    /// Whether a repo entry should appear in the list: it has a known status,
+    /// has workflows, or is flagged (not-found / missing) so the user can act on it.
+    private func isDisplayable(_ entry: RepoStatusEntry, missingRepoIDs: Set<Int>) -> Bool {
+        entry.status.status != .unknown
+            || entry.repo.hasWorkflows
+            || aggregator.notFoundRepoIDs.contains(entry.repo.id)
+            || missingRepoIDs.contains(entry.repo.id)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             // Header
@@ -79,7 +88,7 @@ struct PopoverView: View {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(aggregator.sortedAccounts(), id: \.id) { account in
                             let entries = aggregator.sortedEntries(for: account.id)
-                                .filter { $0.status.status != .unknown || $0.repo.hasWorkflows || aggregator.notFoundRepoIDs.contains($0.repo.id) || missingRepoIDs.contains($0.repo.id) }
+                                .filter { isDisplayable($0, missingRepoIDs: missingRepoIDs) }
                             if !entries.isEmpty {
                                 AccountSectionView(
                                     account: account,
