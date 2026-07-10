@@ -18,6 +18,10 @@
 		98D881632F6925F3004D39FC /* VigilantApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D8815C2F6925F3004D39FC /* VigilantApp.swift */; };
 		98D881642F6925F3004D39FC /* RepositoriesTab.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D881582F6925F3004D39FC /* RepositoriesTab.swift */; };
 		98D881652F6925F3004D39FC /* AppState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D8815B2F6925F3004D39FC /* AppState.swift */; };
+		AB02B001000000000000D001 /* RepositoryPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB02A001000000000000D001 /* RepositoryPersistence.swift */; };
+		AB02B002000000000000D002 /* MissingRepoTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB02A002000000000000D002 /* MissingRepoTracker.swift */; };
+		AB02B003000000000000D003 /* NotificationDispatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB02A003000000000000D003 /* NotificationDispatcher.swift */; };
+		AB02B004000000000000D004 /* WorkflowRefreshCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB02A004000000000000D004 /* WorkflowRefreshCoordinator.swift */; };
 		98D881662F6925F3004D39FC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D881592F6925F3004D39FC /* SettingsView.swift */; };
 		98D881672F6925F3004D39FC /* AccountSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D881532F6925F3004D39FC /* AccountSectionView.swift */; };
 		98D881682F6925F3004D39FC /* IconPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98D881562F6925F3004D39FC /* IconPickerView.swift */; };
@@ -58,6 +62,10 @@
 		98D881582F6925F3004D39FC /* RepositoriesTab.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoriesTab.swift; sourceTree = "<group>"; };
 		98D881592F6925F3004D39FC /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		98D8815B2F6925F3004D39FC /* AppState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppState.swift; sourceTree = "<group>"; };
+		AB02A001000000000000D001 /* RepositoryPersistence.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RepositoryPersistence.swift; sourceTree = "<group>"; };
+		AB02A002000000000000D002 /* MissingRepoTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissingRepoTracker.swift; sourceTree = "<group>"; };
+		AB02A003000000000000D003 /* NotificationDispatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationDispatcher.swift; sourceTree = "<group>"; };
+		AB02A004000000000000D004 /* WorkflowRefreshCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkflowRefreshCoordinator.swift; sourceTree = "<group>"; };
 		98D8815C2F6925F3004D39FC /* VigilantApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VigilantApp.swift; sourceTree = "<group>"; };
 		98D881792F6CD958004D39FC /* StatusBarController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusBarController.swift; sourceTree = "<group>"; };
 		98D881802F6ED000004D39FC /* KeyboardShortcutNames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutNames.swift; sourceTree = "<group>"; };
@@ -166,6 +174,10 @@
 				98D881522F6925F3004D39FC /* Utilities */,
 				98D8815A2F6925F3004D39FC /* Views */,
 				98D8815B2F6925F3004D39FC /* AppState.swift */,
+				AB02A001000000000000D001 /* RepositoryPersistence.swift */,
+				AB02A002000000000000D002 /* MissingRepoTracker.swift */,
+				AB02A003000000000000D003 /* NotificationDispatcher.swift */,
+				AB02A004000000000000D004 /* WorkflowRefreshCoordinator.swift */,
 				98D8815C2F6925F3004D39FC /* VigilantApp.swift */,
 				98D881862F6ED003004D39FC /* Localizable.xcstrings */,
 			);
@@ -278,6 +290,10 @@
 				98D881632F6925F3004D39FC /* VigilantApp.swift in Sources */,
 				98D881642F6925F3004D39FC /* RepositoriesTab.swift in Sources */,
 				98D881652F6925F3004D39FC /* AppState.swift in Sources */,
+				AB02B001000000000000D001 /* RepositoryPersistence.swift in Sources */,
+				AB02B002000000000000D002 /* MissingRepoTracker.swift in Sources */,
+				AB02B003000000000000D003 /* NotificationDispatcher.swift in Sources */,
+				AB02B004000000000000D004 /* WorkflowRefreshCoordinator.swift in Sources */,
 				98D881662F6925F3004D39FC /* SettingsView.swift in Sources */,
 				98D881672F6925F3004D39FC /* AccountSectionView.swift in Sources */,
 				98D881682F6925F3004D39FC /* IconPickerView.swift in Sources */,
