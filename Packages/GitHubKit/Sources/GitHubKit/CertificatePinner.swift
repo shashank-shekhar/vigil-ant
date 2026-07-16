@@ -34,6 +34,17 @@ public final class CertificatePinner: NSObject, URLSessionDelegate, @unchecked S
     ///   CN=Sectigo Public Server Authentication CA DV E36 (intermediate, EC).
     /// - `sLVjNUaFYfW7n6EtgBeEpjOlcnBdNPMrZDRF36iwBdE=`
     ///   CN=Sectigo Public Server Authentication Root E46 (root, EC).
+    ///
+    /// - Important: These are the only anchors trusted for GitHub. If GitHub rotates to a
+    ///   different CA, **release builds reject every connection** until an update ships
+    ///   (Sparkle uses a separate, non-pinned session, so auto-update itself still works).
+    ///   Rotation runbook: before the current chain is retired, add the new CA's SPKI hash
+    ///   here as a backup pin, ship it, then remove the retired hash a release later —
+    ///   keeping two independent anchors avoids a single point of breakage. Compute a hash
+    ///   with:
+    ///   `openssl s_client -connect api.github.com:443 -showcerts </dev/null 2>/dev/null |`
+    ///   `openssl x509 -pubkey -noout | openssl pkey -pubin -outform DER |`
+    ///   `openssl dgst -sha256 -binary | base64`.
     public static let pinnedSPKIHashes: Set<String> = [
         "ZSagvDzjltLkewXEBuDxIzpW/dpVw1Juvvmd0hhkzdY=",
         "sLVjNUaFYfW7n6EtgBeEpjOlcnBdNPMrZDRF36iwBdE=",

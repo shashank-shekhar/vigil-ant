@@ -37,7 +37,7 @@ nonisolated final class CrashReporter: NSObject, MXMetricManagerSubscriber {
 
     func didReceive(_ payloads: [MXDiagnosticPayload]) {
         for payload in payloads {
-            CrashReporter.logger.warning("Diagnostic payload received: \(payload.dictionaryRepresentation())")
+            CrashReporter.logger.warning("Diagnostic payload received — persisting to disk")
             persist(payload.jsonRepresentation(), prefix: "diagnostic", date: payload.timeStampBegin)
         }
     }

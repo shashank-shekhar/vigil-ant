@@ -264,18 +264,18 @@ public struct DeviceFlowManager: Sendable {
             "refresh_token": refreshToken,
         ])
 
-        let (data, _) = try await session.data(for: request)
-        let response = try JSONDecoder().decode(TokenPollResponse.self, from: data)
-        logger.debug("refreshToken error=\(response.error ?? "none", privacy: .public)")
+        let (data, httpResponse) = try await Self.executeWithRetry(request: request, session: session)
+        let response = try? JSONDecoder().decode(TokenPollResponse.self, from: data)
+        logger.debug("refreshToken status=\(httpResponse.statusCode) error=\(response?.error ?? "none", privacy: .public)")
 
-        guard let accessToken = response.accessToken else {
-            throw DeviceFlowError.requestFailed(response.error ?? "Token refresh failed")
+        guard let accessToken = response?.accessToken else {
+            throw DeviceFlowError.requestFailed(response?.error ?? "GitHub returned HTTP \(httpResponse.statusCode)")
         }
 
         return TokenResponse(
             accessToken: accessToken,
-            refreshToken: response.refreshToken ?? refreshToken,
-            expiresIn: response.expiresIn
+            refreshToken: response?.refreshToken ?? refreshToken,
+            expiresIn: response?.expiresIn
         )
     }
 
