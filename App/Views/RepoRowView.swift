@@ -86,7 +86,7 @@ struct RepoRowView: View {
         .onTapGesture {
             if isMissing { return }
             if let url = entry.status.buildURL {
-                NSWorkspace.shared.open(url)
+                NSWorkspace.shared.openWebURL(url)
             }
         }
     }

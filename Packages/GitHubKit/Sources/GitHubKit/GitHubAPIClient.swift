@@ -48,6 +48,31 @@ public actor GitHubAPIClient {
         (etagCache.count, responseCache.count)
     }
 
+    // MARK: - URL Component Encoding
+
+    /// Characters allowed unescaped in a single URL path segment: `.urlPathAllowed`
+    /// minus "/", so a value can't inject extra segments. "?" and "#" are already
+    /// excluded from `.urlPathAllowed`, so query/fragment injection is prevented too.
+    private static let pathSegmentAllowed: CharacterSet = {
+        var allowed = CharacterSet.urlPathAllowed
+        allowed.remove(charactersIn: "/")
+        return allowed
+    }()
+
+    /// Percent-encode a value used as one path segment (owner, repo) or a query value.
+    /// Escapes "/" so it cannot add segments. Owner/repo/branch come from GitHub data,
+    /// but encoding defends against a monitored repo whose name/branch carries URL
+    /// metacharacters corrupting or injecting into the request.
+    private func encodedSegment(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: Self.pathSegmentAllowed) ?? value
+    }
+
+    /// Percent-encode a git ref for a path position where multi-segment refs
+    /// (e.g. "feature/x") are valid — keeps "/" but escapes "#", space, "%", etc.
+    private func encodedRef(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? value
+    }
+
     public func get<T: Decodable & Sendable>(_ path: String) async throws -> T {
         guard let url = URL(string: baseURL.absoluteString + path) else {
             throw GitHubAPIError.invalidResponse
@@ -215,6 +240,9 @@ extension GitHubAPIClient {
         var nextURL: URL? = URL(string: baseURL.absoluteString + "/user/repos?per_page=100&sort=updated")
 
         while let url = nextURL {
+            // Defense-in-depth: never send the Authorization header anywhere but the
+            // configured API host/scheme, even if a Link header's next URL says otherwise.
+            guard url.host == baseURL.host, url.scheme == baseURL.scheme else { break }
             let (page, next): ([RepositoryResponse], URL?) = try await getPage(url)
             allRepos.append(contentsOf: page)
             nextURL = next
@@ -228,7 +256,7 @@ extension GitHubAPIClient {
     public func fetchLatestWorkflowRun(
         owner: String, repo: String, branch: String
     ) async throws -> WorkflowRun? {
-        let path = "/repos/\(owner)/\(repo)/actions/runs?branch=\(branch)&per_page=5"
+        let path = "/repos/\(encodedSegment(owner))/\(encodedSegment(repo))/actions/runs?branch=\(encodedSegment(branch))&per_page=5"
         guard let response: WorkflowRunsResponse = try await getWithETag(path) else {
             return nil
         }
@@ -237,7 +265,7 @@ extension GitHubAPIClient {
 
     /// Check whether a repo has any non-Dependabot workflows configured.
     public func fetchHasWorkflows(owner: String, repo: String) async throws -> Bool {
-        let response: WorkflowsResponse = try await get("/repos/\(owner)/\(repo)/actions/workflows")
+        let response: WorkflowsResponse = try await get("/repos/\(encodedSegment(owner))/\(encodedSegment(repo))/actions/workflows")
         return response.workflows.contains { !$0.path.contains("dependabot") }
     }
 
@@ -245,7 +273,7 @@ extension GitHubAPIClient {
     public func fetchCombinedStatus(
         owner: String, repo: String, ref: String
     ) async throws -> CombinedStatus? {
-        try await getWithETag("/repos/\(owner)/\(repo)/commits/\(ref)/status")
+        try await getWithETag("/repos/\(encodedSegment(owner))/\(encodedSegment(repo))/commits/\(encodedRef(ref))/status")
     }
 }
 

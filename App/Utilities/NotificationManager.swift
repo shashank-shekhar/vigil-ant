@@ -101,8 +101,24 @@ final class NotificationManager: NSObject, UNUserNotificationCenterDelegate {
     ) {
         if let urlString = response.notification.request.content.userInfo["url"] as? String,
            let url = URL(string: urlString) {
-            NSWorkspace.shared.open(url)
+            NSWorkspace.shared.openWebURL(url)
         }
         completionHandler()
+    }
+}
+
+extension NSWorkspace {
+    /// Opens `url` only if it uses a web scheme (http/https), returning whether it opened.
+    ///
+    /// Build/status URLs ultimately come from GitHub API fields such as a commit status's
+    /// `target_url`, which can be set by anyone with `statuses:write` on a monitored repo.
+    /// Restricting the scheme prevents a malicious status from launching `file://`, a custom
+    /// app handler, or another non-web scheme when the user clicks a notification or row.
+    @discardableResult
+    func openWebURL(_ url: URL) -> Bool {
+        guard let scheme = url.scheme?.lowercased(), scheme == "http" || scheme == "https" else {
+            return false
+        }
+        return open(url)
     }
 }
